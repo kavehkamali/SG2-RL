@@ -24,8 +24,14 @@ parser.add_argument("--video_folder", type=str, default="")
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--table_z", type=float, default=0.82)
 parser.add_argument("--goal_z_above_pin", type=float, default=0.07, help="Pre-grasp goal offset above peg (m).")
-parser.add_argument("--orbit_radius", type=float, default=1.65)
-parser.add_argument("--orbit_z_offset", type=float, default=0.48)
+parser.add_argument("--orbit_radius", type=float, default=2.05)
+parser.add_argument("--orbit_z_offset", type=float, default=0.52)
+parser.add_argument(
+    "--orbit_lookat_shift_robot",
+    type=float,
+    default=0.26,
+    help="Shift orbit look-at toward robot in XY (m); 0 disables.",
+)
 parser.add_argument("--skrl_yaml", type=str, default="")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
@@ -44,6 +50,7 @@ import isaaclab_tasks  # noqa: F401, E402
 import uwlab_tasks  # noqa: F401, E402
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
+from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.usd_path_curve import draw_planned_path_polyline  # noqa: E402
 from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
 
@@ -97,7 +104,9 @@ def main(env_cfg, agent_cfg):
     )
     print(f"[sg2_rl] APF path vertices={len(path)} (Khatib artificial potential field + spheres + table)", flush=True)
 
-    look = tuple(float(x) for x in env_cfg.viewer.lookat)
+    look = orbit_lookat_shifted_toward_robot(
+        env_cfg, robot, peg, shift_xy_m=float(args_cli.orbit_lookat_shift_robot)
+    )
     lx, ly, lz = look
     act_dim = unwrapped.action_manager.total_action_dim
     n = env_cfg.scene.num_envs

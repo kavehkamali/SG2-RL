@@ -13,3 +13,4 @@ def test_repo_has_core_files():
     assert (root / "scripts" / "record_path_apf_visual_only.py").is_file()
     assert (root / "scripts" / "record_path_apf_follow_gripper.py").is_file()
     assert (root / "src" / "sg2_rl" / "apf_path.py").is_file()
+    assert (root / "src" / "sg2_rl" / "orbit_camera.py").is_file()

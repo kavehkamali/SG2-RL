@@ -23,8 +23,14 @@ parser.add_argument(
     help="Output folder (default: <repo>/artifacts/videos/orbit_<timestamp>)",
 )
 parser.add_argument("--seed", type=int, default=0)
-parser.add_argument("--orbit_radius", type=float, default=1.65)
-parser.add_argument("--orbit_z_offset", type=float, default=0.48)
+parser.add_argument("--orbit_radius", type=float, default=2.05, help="Orbit radius (m); larger pulls camera back.")
+parser.add_argument("--orbit_z_offset", type=float, default=0.52)
+parser.add_argument(
+    "--orbit_lookat_shift_robot",
+    type=float,
+    default=0.26,
+    help="Shift orbit look-at from env viewer.lookat toward robot in XY (m); 0 disables.",
+)
 parser.add_argument("--axis_len", type=float, default=0.12, help="World-axis gizmo length (m).")
 parser.add_argument("--print_every", type=int, default=30, help="Print pin/wrist world xyz every N steps (0=off).")
 parser.add_argument("--skrl_yaml", type=str, default="", help="Override absolute path to SKRL yaml for Hydra.")
@@ -44,6 +50,7 @@ import torch  # noqa: E402
 import isaaclab_tasks  # noqa: F401, E402
 import uwlab_tasks  # noqa: F401, E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
+from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.usd_gizmo import ensure_rgb_axes  # noqa: E402
 from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
 
@@ -84,7 +91,9 @@ def main(env_cfg, agent_cfg):
         raise RuntimeError(f"Expected one arm_r_link7 body, got {wrist_names}")
     wrist_body_idx = wrist_ids[0]
 
-    look = tuple(float(x) for x in env_cfg.viewer.lookat)
+    look = orbit_lookat_shifted_toward_robot(
+        env_cfg, robot, peg, shift_xy_m=float(args_cli.orbit_lookat_shift_robot)
+    )
     lx, ly, lz = look
     act_dim = unwrapped.action_manager.total_action_dim
     n = env_cfg.scene.num_envs

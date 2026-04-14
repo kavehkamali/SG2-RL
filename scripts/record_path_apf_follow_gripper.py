@@ -20,14 +20,25 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description="APF path + right gripper tracks path (video B).")
 parser.add_argument("--task", type=str, default="OmniReset-FFWSG2-PegPartialAssemblySmoke-v0")
 parser.add_argument("--num_envs", type=int, default=1)
-parser.add_argument("--video_length", type=int, default=360)
+parser.add_argument(
+    "--video_length",
+    type=int,
+    default=720,
+    help="Longer default (2× prior 360) so the full gripper motion is visible.",
+)
 parser.add_argument("--video_folder", type=str, default="")
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--table_z", type=float, default=0.82)
 parser.add_argument("--wrist_clearance_m", type=float, default=0.10)
 parser.add_argument("--goal_z_above_pin", type=float, default=0.07)
-parser.add_argument("--orbit_radius", type=float, default=1.65)
-parser.add_argument("--orbit_z_offset", type=float, default=0.48)
+parser.add_argument("--orbit_radius", type=float, default=2.05)
+parser.add_argument("--orbit_z_offset", type=float, default=0.52)
+parser.add_argument(
+    "--orbit_lookat_shift_robot",
+    type=float,
+    default=0.26,
+    help="Shift orbit look-at toward robot in XY (m); 0 disables.",
+)
 parser.add_argument("--skrl_yaml", type=str, default="")
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
@@ -45,6 +56,7 @@ import isaaclab_tasks  # noqa: F401, E402
 import uwlab_tasks  # noqa: F401, E402
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
+from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.right_gripper_ik import actions_for_ee_goal, build_right_gripper_ik  # noqa: E402
 from sg2_rl.usd_path_curve import draw_planned_path_polyline  # noqa: E402
 from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
@@ -112,7 +124,9 @@ def main(env_cfg, agent_cfg):
 
     min_z = torch.full((n,), float(args_cli.table_z) + float(args_cli.wrist_clearance_m), device=device)
 
-    look = tuple(float(x) for x in env_cfg.viewer.lookat)
+    look = orbit_lookat_shifted_toward_robot(
+        env_cfg, robot, peg, shift_xy_m=float(args_cli.orbit_lookat_shift_robot)
+    )
     lx, ly, lz = look
     n_steps = max(1, args_cli.video_length - 1)
 

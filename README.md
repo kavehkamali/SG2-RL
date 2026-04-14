@@ -33,6 +33,8 @@ chmod +x "$SG2_RL/scripts/run_on_tai.sh"
 
 ## Step 1 — Orbit camera + pin / wrist RGB gizmos + video
 
+Orbit defaults pull the camera back a bit (`--orbit_radius` ≈ 2.05 m) and shift the look-at toward the robot in XY (`--orbit_lookat_shift_robot` ≈ 0.26 m) so the pin and arm are not stacked in frame. Set the shift to `0` to use the env viewer look-at unchanged.
+
 ```bash
 "$SG2_RL/scripts/run_on_tai.sh" record_orbit_pin_wrist_gizmos.py \
   --headless \
@@ -67,8 +69,10 @@ Static **amber polyline** of the planned path; robot still receives small random
 Same polyline plus **differential IK** so the **right gripper (`arm_r_link7`)** tracks the polyline over time.
 
 ```bash
-~/projects/API/SG2-RL/scripts/run_on_tai.sh record_path_apf_follow_gripper.py --headless --video_length 360
+~/projects/API/SG2-RL/scripts/run_on_tai.sh record_path_apf_follow_gripper.py --headless
 ```
+
+The follow script defaults to **`--video_length 720`** (about twice the previous 360) so the full gripper motion fits in one clip; override with `--video_length` if you want a shorter file.
 
 ## Planned RL backends (not wired yet)
 

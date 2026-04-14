@@ -44,7 +44,7 @@ Orbit defaults pull the camera back a bit (`--orbit_radius` ≈ 2.05 m) and shif
 
 Default `--video_folder` is `<SG2-RL>/artifacts/videos/orbit_pin_wrist_<timestamp>/` if you omit it.
 
-Recording scripts default to shifting **only the receptive peg-hole** by `--receptive_offset_x=-0.14` m (toward the robot in world **−X**) so the pin on the table is not resting against the hole; peg and table stay put. Use `--no-shift-viewer-with-receptive` if you want to move the hole but keep the packaged viewer eye/lookat unchanged.
+Recording scripts default to a **cluster shift** on peg, hole, and table (`--scene_shift_x=-0.12`, etc., toward the robot in world **−X**), plus `--peg_extra_sep_x=0.05` on the peg only so the pin sits farther in **+X** from the hole after the move. Use `--no-shift-viewer-with-scene` to keep the packaged viewer eye/lookat fixed.
 
 Stdout includes **pin** and **wrist** world coordinates (env 0). The recording wrapper writes `rl-video-step-0.mp4` under `--video_folder`; the script also copies a timestamped `orbit_pin_wrist_*.mp4` next to it.
 

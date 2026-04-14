@@ -40,18 +40,24 @@ parser.add_argument(
     help="Shift orbit look-at toward robot in XY (m); 0 disables.",
 )
 parser.add_argument(
-    "--receptive_offset_x",
+    "--scene_shift_x",
     type=float,
-    default=-0.14,
-    help="World X offset for receptive (hole) spawn only (+X is away from robot base). Default pulls hole toward robot.",
+    default=-0.12,
+    help="World delta (m) applied to peg, hole, and table together; negative X pulls toward typical robot base.",
 )
-parser.add_argument("--receptive_offset_y", type=float, default=0.0)
-parser.add_argument("--receptive_offset_z", type=float, default=0.0)
+parser.add_argument("--scene_shift_y", type=float, default=0.0)
+parser.add_argument("--scene_shift_z", type=float, default=0.0)
 parser.add_argument(
-    "--shift_viewer_with_receptive",
+    "--peg_extra_sep_x",
+    type=float,
+    default=0.05,
+    help="After cluster shift, extra +X on the peg only so pin and hole stay separated.",
+)
+parser.add_argument(
+    "--shift_viewer_with_scene",
     action=argparse.BooleanOptionalAction,
     default=True,
-    help="Also shift env viewer eye/lookat by the same delta so default framing stays aligned.",
+    help="Shift env viewer eye/lookat by the same cluster delta.",
 )
 parser.add_argument("--skrl_yaml", type=str, default="")
 AppLauncher.add_app_launcher_args(parser)
@@ -77,10 +83,7 @@ from sg2_rl.arm_avoidance import (  # noqa: E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
 from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.right_gripper_ik import actions_for_ee_goal, build_right_gripper_ik  # noqa: E402
-from sg2_rl.scene_layout import (  # noqa: E402
-    offset_receptive_and_viewer_for_world_shift,
-    offset_receptive_object_world_spawn,
-)
+from sg2_rl.scene_layout import apply_peg_hole_workspace_shift  # noqa: E402
 from sg2_rl.usd_path_curve import draw_planned_path_polyline  # noqa: E402
 from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
 
@@ -110,16 +113,21 @@ def main(env_cfg, agent_cfg):
     env_cfg.seed = args_cli.seed
     env_cfg.log_dir = str(vpath / "run")
 
-    rdx, rdy, rdz = (
-        float(args_cli.receptive_offset_x),
-        float(args_cli.receptive_offset_y),
-        float(args_cli.receptive_offset_z),
+    sdx, sdy, sdz = (
+        float(args_cli.scene_shift_x),
+        float(args_cli.scene_shift_y),
+        float(args_cli.scene_shift_z),
     )
-    if rdx != 0.0 or rdy != 0.0 or rdz != 0.0:
-        if args_cli.shift_viewer_with_receptive:
-            offset_receptive_and_viewer_for_world_shift(env_cfg, rdx, rdy, rdz)
-        else:
-            offset_receptive_object_world_spawn(env_cfg, rdx, rdy, rdz)
+    pex = float(args_cli.peg_extra_sep_x)
+    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pex != 0.0:
+        apply_peg_hole_workspace_shift(
+            env_cfg,
+            sdx,
+            sdy,
+            sdz,
+            peg_extra_separation_x=pex,
+            shift_viewer=bool(args_cli.shift_viewer_with_scene),
+        )
 
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array")
     env = gym.wrappers.RecordVideo(

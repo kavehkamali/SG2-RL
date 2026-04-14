@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from sg2_rl.scene_layout import offset_receptive_and_viewer_for_world_shift, offset_receptive_object_world_spawn
+from sg2_rl.scene_layout import (
+    apply_peg_hole_workspace_shift,
+    offset_receptive_and_viewer_for_world_shift,
+    offset_receptive_object_world_spawn,
+)
 
 
 def test_offset_receptive_only():
@@ -15,6 +19,27 @@ def test_offset_receptive_only():
 
     offset_receptive_object_world_spawn(env_cfg, -0.14, 0.02, -0.01)
     assert init.pos == (0.62 - 0.14, 0.02, 0.96 - 0.01)
+
+
+def test_apply_peg_hole_workspace_shift_moves_cluster_and_separates_peg():
+    def body(px, py, pz):
+        return SimpleNamespace(init_state=SimpleNamespace(pos=(px, py, pz)))
+
+    scene = SimpleNamespace(
+        receptive_object=body(1.0, 0.0, 0.9),
+        insertive_object=body(1.12, 0.0, 0.85),
+        work_surface=body(1.03, 0.0, 0.79),
+    )
+    viewer = SimpleNamespace(lookat=(1.0, 0.0, 0.82), eye=(2.5, 0.0, 1.1))
+    env_cfg = SimpleNamespace(scene=scene, viewer=viewer)
+
+    apply_peg_hole_workspace_shift(env_cfg, -0.1, 0.02, 0.01, peg_extra_separation_x=0.04, shift_viewer=True)
+
+    assert scene.receptive_object.init_state.pos == (0.9, 0.02, 0.91)
+    assert scene.work_surface.init_state.pos == (0.93, 0.02, 0.80)
+    assert scene.insertive_object.init_state.pos == (1.06, 0.02, 0.86)
+    assert viewer.lookat == (0.9, 0.02, 0.83)
+    assert viewer.eye == (2.4, 0.02, 1.11)
 
 
 def test_offset_receptive_and_viewer():

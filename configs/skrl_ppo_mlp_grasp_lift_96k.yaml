@@ -1,0 +1,76 @@
+# Copyright (c) 2024-2026, The UW Lab Project Developers.
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# PPO + MLP on vector observations (no vision) for FFWSG2 peg smoke:
+# policy obs already include joint state, peg/hole poses in robot frame (UWLab env cfg).
+#
+# ``trainer.timesteps`` is SKRL's total env-step budget (vectorized). Rough order-of-magnitude
+# PPO gradient updates ≈ timesteps / (global_num_envs * agent.rollouts). Example: 92.16e9
+# steps with 30_000 envs and rollouts=32 → ~96_000 updates. Reduce for smoke tests.
+
+seed: 42
+
+models:
+  separate: false
+  policy:
+    class: GaussianMixin
+    clip_actions: false
+    clip_log_std: true
+    min_log_std: -20.0
+    max_log_std: 2.0
+    initial_log_std: 0.0
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [512, 512, 256]
+        activations: elu
+    output: ACTIONS
+  value:
+    class: DeterministicMixin
+    clip_actions: false
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [512, 512, 256]
+        activations: elu
+    output: ONE
+
+memory:
+  class: RandomMemory
+  memory_size: -1
+
+agent:
+  class: PPO
+  rollouts: 32
+  learning_epochs: 5
+  mini_batches: 8
+  discount_factor: 0.99
+  gae_lambda: 0.95
+  learning_rate: 3.0e-04
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.01
+  observation_preprocessor: RunningStandardScaler
+  observation_preprocessor_kwargs: null
+  value_preprocessor: RunningStandardScaler
+  value_preprocessor_kwargs: null
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 1.0
+  ratio_clip: 0.15
+  value_clip: 0.2
+  entropy_loss_scale: 0.02
+  value_loss_scale: 1.0
+  kl_threshold: 0.0
+  rewards_shaper_scale: 1.0
+  time_limit_bootstrap: false
+  experiment:
+    directory: "sg2_rl_grasp_lift_mlp_ppo"
+    experiment_name: ""
+    write_interval: 4096
+    checkpoint_interval: 98304
+
+trainer:
+  class: SequentialTrainer
+  timesteps: 92160000000
+  environment_info: log

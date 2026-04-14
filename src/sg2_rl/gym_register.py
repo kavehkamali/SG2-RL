@@ -13,7 +13,7 @@ _FFW_PEG_ENV_MOD = (
 )
 
 # Task id -> (env_cfg_entry_point, skrl yaml filename under configs/)
-_REGISTRY: dict[str, tuple[str, str]] = {
+REGISTERED_TASKS: dict[str, tuple[str, str]] = {
     "OmniReset-FFWSG2-PegPartialAssemblySmoke-v0": (
         f"{_FFW_PEG_ENV_MOD}:FfwSg2PegPartialAssemblySmokeEnvCfg",
         "skrl_agent_placeholder.yaml",
@@ -26,6 +26,11 @@ _REGISTRY: dict[str, tuple[str, str]] = {
         f"{_FFW_PEG_ENV_MOD}:FfwSg2PegPartialAssemblyApproachOnlyBEnvCfg",
         "skrl_agent_placeholder.yaml",
     ),
+    # Same smoke peg scene + vector obs (joints, peg/hole in robot frame); dedicated SKRL PPO yaml (MLP, long run).
+    "OmniReset-FFWSG2-PegMLPGraspLift-v0": (
+        f"{_FFW_PEG_ENV_MOD}:FfwSg2PegPartialAssemblySmokeEnvCfg",
+        "skrl_ppo_mlp_grasp_lift_96k.yaml",
+    ),
 }
 
 
@@ -36,9 +41,9 @@ def ensure_task_registered(task_id: str, skrl_yaml_override: str = "") -> None:
         return
     except Exception:
         pass
-    if task_id not in _REGISTRY:
+    if task_id not in REGISTERED_TASKS:
         return
-    env_ep, yaml_name = _REGISTRY[task_id]
+    env_ep, yaml_name = REGISTERED_TASKS[task_id]
     if str(skrl_yaml_override).strip():
         ypath = Path(str(skrl_yaml_override).strip()).expanduser()
     else:

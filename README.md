@@ -18,6 +18,50 @@ Isolated reinforcement-learning workspace for the **FFW SG2** peg-in-hole style 
 - **UW Lab** `uwlab_tasks` (and dependencies) importable the same way you already train `OmniReset-FFWSG2-*` tasks
 - Run with Isaac’s Python: e.g. `…/IsaacLab/_isaac_sim/python.sh scripts/<script>.py --headless …`
 
+## Replicate everything (checklist)
+
+Do these on a machine that already matches your UWLab + Isaac layout (e.g. **tai**).
+
+1. **Repos & env**  
+   - `UWLab` at `~/projects/API/UWLab` (or set `UWLAB` / `UWLAB_PATH`).  
+   - `SG2-RL` at `~/projects/API/SG2-RL` (this repo).  
+   - Use the same **`env_uwlab`** interpreter as training (`…/UWLab/env_uwlab/bin/python`).
+
+2. **HF assets mirror** (peg / hole USD, same as other UWLab peg jobs)  
+   ```bash
+   export UWLAB_CLOUD_ASSETS_DIR="${UWLAB_CLOUD_ASSETS_DIR:-$HOME/uwlab_hf_assets}"
+   ```
+
+3. **Smoke** (confirms task + PhysX load)  
+   ```bash
+   export SG2_RL="${SG2_RL:-$HOME/projects/API/SG2-RL}"
+   chmod +x "$SG2_RL/scripts/run_on_tai.sh"
+   "$SG2_RL/scripts/run_on_tai.sh" smoke_random_motion.py --headless --steps 32
+   ```
+
+4. **Videos (optional order)**  
+   - Step 1 orbit + gizmos: `record_orbit_pin_wrist_gizmos.py`  
+   - APF path A: `record_path_apf_visual_only.py`  
+   - APF path B: `record_path_apf_follow_gripper.py`  
+   - Grasp / lift script: `record_grasp_lift_peg.py` (writes `grasp_monitor.csv` next to the MP4)
+
+5. **PPO training (MLP, vector obs, ~30k envs on 2 GPUs)**  
+   - Registers gym id **`OmniReset-FFWSG2-PegMLPGraspLift-v0`** (same **`FfwSg2PegPartialAssemblySmokeEnvCfg`** as smoke: joints + peg/hole poses, **no** camera pixels).  
+   - Scene already uses the shared tabletop **PhysX** material path from UWLab peg config (`FFWSG2_TablePhys`); no extra SG2-RL USD fork.  
+   - From `SG2-RL` (adjust `UWLAB_PATH` if needed):  
+     ```bash
+     chmod +x scripts/tmux_train_grasp_lift_ddp.sh
+     UWLAB_PATH="$HOME/projects/API/UWLab" SG2_RL="$HOME/projects/API/SG2-RL" \
+       ./scripts/tmux_train_grasp_lift_ddp.sh
+     ```  
+   - **tmux session:** `sg2rl-grasp-ppo-ddp` → `tmux attach -t sg2rl-grasp-ppo-ddp`  
+   - **Log:** `/tmp/sg2rl_grasp_lift_ppo_ddp.log`  
+   - **SKRL budget:** `configs/skrl_ppo_mlp_grasp_lift_96k.yaml` sets `trainer.timesteps: 92160000000` as a **~96k PPO-update-scale** budget for `num_envs=30000` and `rollouts=32` (order-of-magnitude: updates ≈ timesteps / (`num_envs` × `rollouts`)); edit the yaml for shorter smoke runs.  
+   - **Override env count:** `NUM_ENV_TOTAL=28672 ./scripts/tmux_train_grasp_lift_ddp.sh` (must be divisible by `NPROC`, default **2**).
+
+6. **Sync from laptop** (if you develop on Mac)  
+   - See `docs/DEPLOY.md` (`rsync` / `git push` + `git pull` on tai).
+
 ## On **tai** (`10.225.68.32`)
 
 Use the same **`env_uwlab`** interpreter as UWLab training (paths match a default clone layout).  
@@ -90,15 +134,15 @@ Tune reach with ``--lift_low`` (smaller = body lower on the rail), ``--lift_carr
 
 The script logs **wrist–pin distance** and peg **height vs reset** each ``--monitor-every`` steps, writes ``grasp_monitor.csv`` in the video folder, and advances phases when distance streaks clear thresholds. After peg **lift** is confirmed (``--lift-dz-success`` or ``--lift-z-above-table`` for ``--lifted-hold-frames``), it holds the max lift pose for the rest of the clip so the MP4 still has a fixed length.
 
-## Planned RL backends (not wired yet)
+## RL (minimal PPO baseline)
 
-| Algorithm | Suggested stack |
-|-----------|-----------------|
-| **PPO** | SKRL (already used in UWLab) or Stable-Baselines3 |
-| **SAC** | Stable-Baselines3 or SKRL |
-| **DDP** | `torchrun` + distributed trainer (e.g. skrl / custom) |
+| Item | Detail |
+|------|--------|
+| **Task** | `OmniReset-FFWSG2-PegMLPGraspLift-v0` (registered from `sg2_rl.gym_register`; same smoke env, dedicated SKRL yaml). |
+| **Policy** | MLP on vector observations only (`configs/skrl_ppo_mlp_grasp_lift_96k.yaml`). |
+| **Multi-GPU** | `scripts/tmux_train_grasp_lift_ddp.sh` → `torchrun` + UWLab `train.py --distributed`, default **30000** parallel envs across **2** ranks. |
 
-Details: `docs/RL_BACKENDS.md`.
+Other backends / notes: `docs/RL_BACKENDS.md`.
 
 ## Tests
 

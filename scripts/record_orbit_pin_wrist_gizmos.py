@@ -37,17 +37,18 @@ parser.add_argument("--skrl_yaml", type=str, default="", help="Override absolute
 parser.add_argument(
     "--scene_shift_x",
     type=float,
-    default=-0.12,
-    help="World delta (m) on peg, hole, and table; negative X toward robot base.",
+    default=0.0,
+    help="World delta (m) on peg, hole, and table; default 0 keeps packaged hole position.",
 )
 parser.add_argument("--scene_shift_y", type=float, default=0.0)
 parser.add_argument("--scene_shift_z", type=float, default=0.0)
 parser.add_argument(
-    "--peg_extra_sep_x",
+    "--peg_offset_x_from_hole",
     type=float,
-    default=0.05,
-    help="Extra +X on peg only after cluster shift (pin–hole clearance).",
+    default=-0.10,
+    help="Peg X = hole X + this (m) after cluster; -0.10 mirrors stock +0.10 toward the robot.",
 )
+parser.add_argument("--peg_offset_y_from_hole", type=float, default=0.0)
 parser.add_argument(
     "--shift_viewer_with_scene",
     action=argparse.BooleanOptionalAction,
@@ -93,14 +94,16 @@ def main(env_cfg, agent_cfg):
         float(args_cli.scene_shift_y),
         float(args_cli.scene_shift_z),
     )
-    pex = float(args_cli.peg_extra_sep_x)
-    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pex != 0.0:
+    pox = float(args_cli.peg_offset_x_from_hole)
+    poy = float(args_cli.peg_offset_y_from_hole)
+    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pox != 0.0 or poy != 0.0:
         apply_peg_hole_workspace_shift(
             env_cfg,
             sdx,
             sdy,
             sdz,
-            peg_extra_separation_x=pex,
+            peg_offset_x_from_hole=pox,
+            peg_offset_y_from_hole=poy,
             shift_viewer=bool(args_cli.shift_viewer_with_scene),
         )
 

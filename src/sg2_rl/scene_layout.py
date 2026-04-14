@@ -49,19 +49,21 @@ def apply_peg_hole_workspace_shift(
     cluster_dy: float,
     cluster_dz: float,
     *,
-    peg_extra_separation_x: float = 0.0,
+    peg_offset_x_from_hole: float = -0.10,
+    peg_offset_y_from_hole: float = 0.0,
     shift_viewer: bool = True,
 ) -> None:
-    """Shift peg, hole, and work surface together, then separate the pin from the hole.
+    """Shift peg, hole, and table together, then place the pin relative to the hole.
 
-    - **Cluster shift** ``(cluster_dx, cluster_dy, cluster_dz)`` is applied to
-      ``receptive_object``, ``insertive_object``, and ``work_surface`` (if present)
-      so the pin stays on the table.
-    - **peg_extra_separation_x** is added to the **insertive (peg)** X only *after*
-      the cluster shift, pushing the pin farther in +X from the hole for clearance.
+    - **Cluster shift** moves ``receptive_object``, ``insertive_object``, and ``work_surface``
+      together so the pin stays on the table.
+    - **peg_offset_x_from_hole** / **peg_offset_y_from_hole**: after the cluster shift, the
+      insertive root XY is set from the receptive root XY plus these offsets. Peg **Z** is
+      kept from the post-cluster insertive pose (table height).
 
-    For the default FFWSG2 peg smoke layout, negative ``cluster_dx`` moves the setup
-    toward the robot base (world −X).
+    UWLab defaults put the pin at ``+0.10`` m in world **X** from the hole (pin away from the
+    robot). Use ``peg_offset_x_from_hole=-0.10`` for the same spacing with the pin **toward**
+    the robot (−X in that layout). Magnitude ``0.10`` matches the stock lateral offset.
     """
     scene = env_cfg.scene
     for name in _CLUSTER_ASSET_NAMES:
@@ -72,10 +74,11 @@ def apply_peg_hole_workspace_shift(
         x, y, z = _pos_tuple(init.pos)
         init.pos = (x + cluster_dx, y + cluster_dy, z + cluster_dz)
 
-    if peg_extra_separation_x != 0.0:
-        ins = scene.insertive_object.init_state
-        x, y, z = _pos_tuple(ins.pos)
-        ins.pos = (x + peg_extra_separation_x, y, z)
+    rec = scene.receptive_object.init_state
+    ins = scene.insertive_object.init_state
+    hx, hy, _ = _pos_tuple(rec.pos)
+    _, _, pz = _pos_tuple(ins.pos)
+    ins.pos = (hx + peg_offset_x_from_hole, hy + peg_offset_y_from_hole, pz)
 
     if shift_viewer:
         offset_viewer_eye_and_lookat(env_cfg, cluster_dx, cluster_dy, cluster_dz)

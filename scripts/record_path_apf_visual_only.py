@@ -23,6 +23,12 @@ parser.add_argument("--video_length", type=int, default=300)
 parser.add_argument("--video_folder", type=str, default="")
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--table_z", type=float, default=0.82)
+parser.add_argument(
+    "--wrist_clearance_m",
+    type=float,
+    default=0.18,
+    help="APF table Z margin (m): path clamp at table_z + this.",
+)
 parser.add_argument("--goal_z_above_pin", type=float, default=0.07, help="Pre-grasp goal offset above peg (m).")
 parser.add_argument("--orbit_radius", type=float, default=2.05)
 parser.add_argument("--orbit_z_offset", type=float, default=0.52)
@@ -35,17 +41,18 @@ parser.add_argument(
 parser.add_argument(
     "--scene_shift_x",
     type=float,
-    default=-0.12,
-    help="World delta (m) on peg, hole, and table; negative X toward robot base.",
+    default=0.0,
+    help="World delta (m) on peg, hole, and table; default 0 keeps packaged hole position.",
 )
 parser.add_argument("--scene_shift_y", type=float, default=0.0)
 parser.add_argument("--scene_shift_z", type=float, default=0.0)
 parser.add_argument(
-    "--peg_extra_sep_x",
+    "--peg_offset_x_from_hole",
     type=float,
-    default=0.05,
-    help="Extra +X on peg only after cluster shift (pin–hole clearance).",
+    default=-0.10,
+    help="Peg X = hole X + this (m) after cluster; -0.10 mirrors stock +0.10 toward the robot.",
 )
+parser.add_argument("--peg_offset_y_from_hole", type=float, default=0.0)
 parser.add_argument(
     "--shift_viewer_with_scene",
     action=argparse.BooleanOptionalAction,
@@ -94,14 +101,16 @@ def main(env_cfg, agent_cfg):
         float(args_cli.scene_shift_y),
         float(args_cli.scene_shift_z),
     )
-    pex = float(args_cli.peg_extra_sep_x)
-    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pex != 0.0:
+    pox = float(args_cli.peg_offset_x_from_hole)
+    poy = float(args_cli.peg_offset_y_from_hole)
+    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pox != 0.0 or poy != 0.0:
         apply_peg_hole_workspace_shift(
             env_cfg,
             sdx,
             sdy,
             sdz,
-            peg_extra_separation_x=pex,
+            peg_offset_x_from_hole=pox,
+            peg_offset_y_from_hole=poy,
             shift_viewer=bool(args_cli.shift_viewer_with_scene),
         )
 
@@ -140,6 +149,7 @@ def main(env_cfg, agent_cfg):
         wrist0,
         goal,
         table_z=float(args_cli.table_z),
+        wrist_clearance_m=float(args_cli.wrist_clearance_m),
         sphere_obstacles=spheres,
         arm_repulse_base_xyz=arm_base,
     )

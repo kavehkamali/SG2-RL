@@ -33,11 +33,14 @@ def test_apply_peg_hole_workspace_shift_moves_cluster_and_separates_peg():
     viewer = SimpleNamespace(lookat=(1.0, 0.0, 0.82), eye=(2.5, 0.0, 1.1))
     env_cfg = SimpleNamespace(scene=scene, viewer=viewer)
 
-    apply_peg_hole_workspace_shift(env_cfg, -0.1, 0.02, 0.01, peg_extra_separation_x=0.04, shift_viewer=True)
+    apply_peg_hole_workspace_shift(
+        env_cfg, -0.1, 0.02, 0.01, peg_offset_x_from_hole=0.04, peg_offset_y_from_hole=0.0, shift_viewer=True
+    )
 
     assert scene.receptive_object.init_state.pos == (0.9, 0.02, 0.91)
     assert scene.work_surface.init_state.pos == (0.93, 0.02, 0.80)
-    assert scene.insertive_object.init_state.pos == (1.06, 0.02, 0.86)
+    px, py, pz = scene.insertive_object.init_state.pos
+    assert abs(px - 0.94) < 1e-9 and abs(py - 0.02) < 1e-9 and abs(pz - 0.86) < 1e-9
     assert viewer.lookat == (0.9, 0.02, 0.83)
     assert viewer.eye == (2.4, 0.02, 1.11)
 

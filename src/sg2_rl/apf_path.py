@@ -68,7 +68,7 @@ def _chain_repulsive_wrist_gradient(
     return out
 
 
-def _table_restore(x: np.ndarray, z_floor: float, gain: float = 8.0) -> np.ndarray:
+def _table_restore(x: np.ndarray, z_floor: float, gain: float = 11.0) -> np.ndarray:
     """Soft upward force if below ``z_floor`` (table + margin)."""
     if x[2] >= z_floor:
         return np.zeros(3, dtype=np.float64)
@@ -80,7 +80,7 @@ def plan_apf_polyline(
     goal_xyz: Sequence[float],
     *,
     table_z: float,
-    wrist_clearance_m: float = 0.10,
+    wrist_clearance_m: float = 0.18,
     sphere_obstacles: Sequence[SphereObstacle] | None = None,
     arm_repulse_base_xyz: Sequence[float] | None = None,
     arm_repulse_t: Sequence[float] = DEFAULT_ARM_REPULSE_T,

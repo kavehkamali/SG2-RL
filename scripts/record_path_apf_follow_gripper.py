@@ -29,7 +29,12 @@ parser.add_argument(
 parser.add_argument("--video_folder", type=str, default="")
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--table_z", type=float, default=0.82)
-parser.add_argument("--wrist_clearance_m", type=float, default=0.10)
+parser.add_argument(
+    "--wrist_clearance_m",
+    type=float,
+    default=0.18,
+    help="Min wrist Z = table_z + this (m); larger keeps the gripper off the tabletop in APF + IK.",
+)
 parser.add_argument("--goal_z_above_pin", type=float, default=0.07)
 parser.add_argument("--orbit_radius", type=float, default=2.05)
 parser.add_argument("--orbit_z_offset", type=float, default=0.52)
@@ -42,16 +47,23 @@ parser.add_argument(
 parser.add_argument(
     "--scene_shift_x",
     type=float,
-    default=-0.12,
-    help="World delta (m) applied to peg, hole, and table together; negative X pulls toward typical robot base.",
+    default=0.0,
+    help="World delta (m) on peg, hole, and table together; default 0 keeps packaged hole position.",
 )
 parser.add_argument("--scene_shift_y", type=float, default=0.0)
 parser.add_argument("--scene_shift_z", type=float, default=0.0)
 parser.add_argument(
-    "--peg_extra_sep_x",
+    "--peg_offset_x_from_hole",
     type=float,
-    default=0.05,
-    help="After cluster shift, extra +X on the peg only so pin and hole stay separated.",
+    default=-0.10,
+    help="After cluster shift, peg world X = hole X + this (m). Stock layout uses +0.10 (pin away from robot); "
+    "-0.10 keeps the same spacing with the pin toward the robot.",
+)
+parser.add_argument(
+    "--peg_offset_y_from_hole",
+    type=float,
+    default=0.0,
+    help="Peg world Y = hole Y + this (m) after cluster shift.",
 )
 parser.add_argument(
     "--shift_viewer_with_scene",
@@ -118,14 +130,16 @@ def main(env_cfg, agent_cfg):
         float(args_cli.scene_shift_y),
         float(args_cli.scene_shift_z),
     )
-    pex = float(args_cli.peg_extra_sep_x)
-    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pex != 0.0:
+    pox = float(args_cli.peg_offset_x_from_hole)
+    poy = float(args_cli.peg_offset_y_from_hole)
+    if sdx != 0.0 or sdy != 0.0 or sdz != 0.0 or pox != 0.0 or poy != 0.0:
         apply_peg_hole_workspace_shift(
             env_cfg,
             sdx,
             sdy,
             sdz,
-            peg_extra_separation_x=pex,
+            peg_offset_x_from_hole=pox,
+            peg_offset_y_from_hole=poy,
             shift_viewer=bool(args_cli.shift_viewer_with_scene),
         )
 

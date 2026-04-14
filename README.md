@@ -88,6 +88,8 @@ Open-loop phases: lower **``lift_joint``**, right-wrist IK to the moving peg, cl
 
 Tune reach with ``--lift_low`` (smaller = body lower on the rail), ``--lift_carry`` after grasp, phase fractions ``--frac-torso`` / ``--frac-approach`` / ``--frac-settle``, and ``--gripper-close-mag`` if the fingers do not visibly close.
 
+The script logs **wrist–pin distance** and peg **height vs reset** each ``--monitor-every`` steps, writes ``grasp_monitor.csv`` in the video folder, and advances phases when distance streaks clear thresholds. After peg **lift** is confirmed (``--lift-dz-success`` or ``--lift-z-above-table`` for ``--lifted-hold-frames``), it holds the max lift pose for the rest of the clip so the MP4 still has a fixed length.
+
 ## Planned RL backends (not wired yet)
 
 | Algorithm | Suggested stack |

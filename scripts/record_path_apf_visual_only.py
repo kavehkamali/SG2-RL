@@ -49,6 +49,7 @@ import torch  # noqa: E402
 import isaaclab_tasks  # noqa: F401, E402
 import uwlab_tasks  # noqa: F401, E402
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
+from sg2_rl.arm_avoidance import pick_right_arm_line_base_xyz  # noqa: E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
 from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.usd_path_curve import draw_planned_path_polyline  # noqa: E402
@@ -96,13 +97,20 @@ def main(env_cfg, agent_cfg):
     goal = peg0.copy()
     goal[2] += float(args_cli.goal_z_above_pin)
 
+    arm_base = pick_right_arm_line_base_xyz(robot)
+    spheres = default_workspace_obstacles(peg0)
     path = plan_apf_polyline(
         wrist0,
         goal,
         table_z=float(args_cli.table_z),
-        sphere_obstacles=default_workspace_obstacles(peg0),
+        sphere_obstacles=spheres,
+        arm_repulse_base_xyz=arm_base,
     )
-    print(f"[sg2_rl] APF path vertices={len(path)} (Khatib artificial potential field + spheres + table)", flush=True)
+    print(
+        f"[sg2_rl] APF path vertices={len(path)} (Khatib APF + spheres + table; "
+        f"arm-aware repulse base={'set' if arm_base is not None else 'off'})",
+        flush=True,
+    )
 
     look = orbit_lookat_shifted_toward_robot(
         env_cfg, robot, peg, shift_xy_m=float(args_cli.orbit_lookat_shift_robot)

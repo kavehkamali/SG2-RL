@@ -55,6 +55,11 @@ import gymnasium as gym  # noqa: E402
 import isaaclab_tasks  # noqa: F401, E402
 import uwlab_tasks  # noqa: F401, E402
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
+from sg2_rl.arm_avoidance import (  # noqa: E402
+    nudge_ee_des_for_arm_spheres,
+    pick_right_arm_line_base_xyz,
+    right_arm_link_check_indices,
+)
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
 from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.right_gripper_ik import actions_for_ee_goal, build_right_gripper_ik  # noqa: E402
@@ -113,14 +118,22 @@ def main(env_cfg, agent_cfg):
     goal = peg0.copy()
     goal[2] += float(args_cli.goal_z_above_pin)
 
+    arm_base = pick_right_arm_line_base_xyz(robot)
+    spheres = default_workspace_obstacles(peg0)
     path = plan_apf_polyline(
         wrist0,
         goal,
         table_z=float(args_cli.table_z),
         wrist_clearance_m=float(args_cli.wrist_clearance_m),
-        sphere_obstacles=default_workspace_obstacles(peg0),
+        sphere_obstacles=spheres,
+        arm_repulse_base_xyz=arm_base,
     )
-    print(f"[sg2_rl] APF path vertices={len(path)}; IK tracks polyline (video B)", flush=True)
+    arm_link_ids = right_arm_link_check_indices(robot) or [wrist_body_idx]
+    print(
+        f"[sg2_rl] APF path vertices={len(path)}; IK tracks polyline; "
+        f"arm sphere avoidance links={len(arm_link_ids)} base={'set' if arm_base is not None else 'off'} (video B)",
+        flush=True,
+    )
 
     min_z = torch.full((n,), float(args_cli.table_z) + float(args_cli.wrist_clearance_m), device=device)
 
@@ -145,6 +158,8 @@ def main(env_cfg, agent_cfg):
         s01 = step / max(args_cli.video_length - 1, 1)
         tgt = _interp_path(path, s01)
         ee_des = torch.tensor(tgt, device=device, dtype=torch.float32).unsqueeze(0).expand(n, -1)
+        link_pos = robot.data.body_link_pos_w[:, arm_link_ids].to(device)
+        ee_des = nudge_ee_des_for_arm_spheres(ee_des, link_pos, spheres)
 
         actions = actions_for_ee_goal(ctx, robot, ee_des, min_z=min_z)
         env.step(actions)

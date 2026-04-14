@@ -8,7 +8,11 @@ We use:
   - **Spherical repulsors** (Khatib-style inverse-distance repulsion inside a cutoff).
   - **Table half-space** soft constraint: upward restoring force below a safe Z band.
 
-This is a *kinematic* planner in R^3 (wrist workspace proxy), not full arm collision checking.
+By default repulsion is evaluated at the **wrist** only. If ``arm_repulse_base_xyz`` is
+set, repulsive gradients are summed along a **straight segment** from that base point to
+the wrist at several fractions ``t in (0, 1]``, each scaled by ``t`` (chain rule for
+``p = base + t * (x - base)``). That approximates clearance for the arm bulk versus the
+same spheres; it does **not** model self-collision or mesh CAD.
 """
 
 from __future__ import annotations
@@ -18,6 +22,12 @@ from dataclasses import dataclass
 from typing import Sequence
 
 import numpy as np
+
+# Fractions along base→wrist used for repulsive field sampling (includes wrist at 1.0).
+DEFAULT_ARM_REPULSE_T: tuple[float, ...] = (0.12, 0.28, 0.45, 0.62, 0.8, 1.0)
+
+# If the base is almost coincident with the wrist, fall back to wrist-only repulsion.
+_ARM_SEGMENT_MIN_M = 0.04
 
 
 @dataclass
@@ -42,6 +52,22 @@ def _repulsive_force(x: np.ndarray, obs: SphereObstacle) -> np.ndarray:
     return (mag / d) * d_vec
 
 
+def _chain_repulsive_wrist_gradient(
+    x: np.ndarray,
+    base: np.ndarray,
+    t_values: Sequence[float],
+    obs_list: Sequence[SphereObstacle],
+) -> np.ndarray:
+    """Repulsive gradient w.r.t. wrist ``x`` from spheres sampled along base→``x``."""
+    sh = np.asarray(base, dtype=np.float64).reshape(3)
+    out = np.zeros(3, dtype=np.float64)
+    for t in t_values:
+        p = sh + float(t) * (x - sh)
+        for o in obs_list:
+            out += float(t) * _repulsive_force(p, o)
+    return out
+
+
 def _table_restore(x: np.ndarray, z_floor: float, gain: float = 8.0) -> np.ndarray:
     """Soft upward force if below ``z_floor`` (table + margin)."""
     if x[2] >= z_floor:
@@ -56,6 +82,8 @@ def plan_apf_polyline(
     table_z: float,
     wrist_clearance_m: float = 0.10,
     sphere_obstacles: Sequence[SphereObstacle] | None = None,
+    arm_repulse_base_xyz: Sequence[float] | None = None,
+    arm_repulse_t: Sequence[float] = DEFAULT_ARM_REPULSE_T,
     k_attract: float = 1.2,
     step_m: float = 0.008,
     max_steps: int = 800,
@@ -66,6 +94,8 @@ def plan_apf_polyline(
     g = np.array(goal_xyz, dtype=np.float64).reshape(3)
     z_floor = float(table_z) + float(wrist_clearance_m)
     obs_list = list(sphere_obstacles or ())
+    arm_base = None if arm_repulse_base_xyz is None else np.asarray(arm_repulse_base_xyz, dtype=np.float64).reshape(3)
+    t_vals = tuple(float(t) for t in arm_repulse_t) if arm_repulse_t else (1.0,)
 
     pts: list[list[float]] = [x.copy().tolist()]
     for _ in range(max_steps):
@@ -73,8 +103,11 @@ def plan_apf_polyline(
             break
         f_att = -k_attract * (x - g)
         f_rep = np.zeros(3, dtype=np.float64)
-        for o in obs_list:
-            f_rep += _repulsive_force(x, o)
+        if arm_base is not None and float(np.linalg.norm(x - arm_base)) > _ARM_SEGMENT_MIN_M:
+            f_rep = _chain_repulsive_wrist_gradient(x, arm_base, t_vals, obs_list)
+        else:
+            for o in obs_list:
+                f_rep += _repulsive_force(x, o)
         f_tab = _table_restore(x, z_floor)
         v = f_att + f_rep + f_tab
         vn = float(np.linalg.norm(v))

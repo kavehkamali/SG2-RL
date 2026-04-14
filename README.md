@@ -50,11 +50,13 @@ Stdout includes **pin** and **wrist** world coordinates (env 0). The recording w
 
 **Method:** [**Artificial Potential Field (APF)**](https://en.wikipedia.org/wiki/Artificial_potential_field) — the standard attractive / repulsive field formulation associated with **Oussama Khatib** (*International Journal of Robotics Research*, **1986**; often referenced from earlier ICRA work).  
 
-In this repo the planner operates in **3D workspace** (right wrist / gripper proxy):
+In this repo the planner operates in **3D workspace** (right wrist / gripper proxy), with **arm-aware** sphere avoidance layered on:
 
 - **Attractive:** spring-like pull toward a pre-grasp goal above the peg.
-- **Repulsive:** a few **spherical “protective hulls”** (virtual obstacles) near the peg to force a visible detour without mesh CAD.
+- **Repulsive:** a few **spherical “protective hulls”** (virtual obstacles) near the peg to force a visible detour without mesh CAD. Repulsion can be sampled along a **shoulder→wrist line** (frozen mid-arm link at reset) so the path is pushed away when intermediate links would intersect those spheres, not only the wrist.
 - **Table constraint:** soft upward restoring force below a safe **Z** band so the polyline stays above the tabletop.
+
+During **video B** playback, every ``arm_r_link*`` body is checked against the same spheres and the commanded wrist target is **nudged** if any link enters an influence radius (still analytic spheres, not PhysX mesh contact).
 
 ### Video A — path only (no RGB coordinate gizmos)
 

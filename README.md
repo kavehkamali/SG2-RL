@@ -44,6 +44,32 @@ Default `--video_folder` is `<SG2-RL>/artifacts/videos/orbit_pin_wrist_<timestam
 
 Stdout includes **pin** and **wrist** world coordinates (env 0). The recording wrapper writes `rl-video-step-0.mp4` under `--video_folder`; the script also copies a timestamped `orbit_pin_wrist_*.mp4` next to it.
 
+## Path planning (classic obstacle avoidance)
+
+**Method:** [**Artificial Potential Field (APF)**](https://en.wikipedia.org/wiki/Artificial_potential_field) — the standard attractive / repulsive field formulation associated with **Oussama Khatib** (*International Journal of Robotics Research*, **1986**; often referenced from earlier ICRA work).  
+
+In this repo the planner operates in **3D workspace** (right wrist / gripper proxy):
+
+- **Attractive:** spring-like pull toward a pre-grasp goal above the peg.
+- **Repulsive:** a few **spherical “protective hulls”** (virtual obstacles) near the peg to force a visible detour without mesh CAD.
+- **Table constraint:** soft upward restoring force below a safe **Z** band so the polyline stays above the tabletop.
+
+### Video A — path only (no RGB coordinate gizmos)
+
+Static **amber polyline** of the planned path; robot still receives small random joint actions so the scene is alive.
+
+```bash
+~/projects/API/SG2-RL/scripts/run_on_tai.sh record_path_apf_visual_only.py --headless --video_length 300
+```
+
+### Video B — path + gripper follows
+
+Same polyline plus **differential IK** so the **right gripper (`arm_r_link7`)** tracks the polyline over time.
+
+```bash
+~/projects/API/SG2-RL/scripts/run_on_tai.sh record_path_apf_follow_gripper.py --headless --video_length 360
+```
+
 ## Planned RL backends (not wired yet)
 
 | Algorithm | Suggested stack |

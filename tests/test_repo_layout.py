@@ -12,6 +12,7 @@ def test_repo_has_core_files():
     assert (root / "scripts" / "record_orbit_pin_wrist_gizmos.py").is_file()
     assert (root / "scripts" / "record_path_apf_visual_only.py").is_file()
     assert (root / "scripts" / "record_path_apf_follow_gripper.py").is_file()
+    assert (root / "scripts" / "record_grasp_lift_peg.py").is_file()
     assert (root / "src" / "sg2_rl" / "apf_path.py").is_file()
     assert (root / "src" / "sg2_rl" / "orbit_camera.py").is_file()
     assert (root / "src" / "sg2_rl" / "arm_avoidance.py").is_file()

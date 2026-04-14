@@ -78,6 +78,16 @@ Same polyline plus **differential IK** so the **right gripper (`arm_r_link7`)** 
 
 The follow script defaults to **`--video_length 1440`** (twice the prior 720 default) so the full gripper motion fits in one clip; override with `--video_length` if you want a shorter file.
 
+### Step — grasp pin + lift (torso down, right gripper)
+
+Open-loop phases: lower **``lift_joint``**, right-wrist IK to the moving peg, close **``gripper_r_joint*``**, then raise wrist + torso. Same scene layout flags as the APF recorders.
+
+```bash
+"$SG2_RL/scripts/run_on_tai.sh" record_grasp_lift_peg.py --headless
+```
+
+Tune reach with ``--lift_low`` (smaller = body lower on the rail), ``--lift_carry`` after grasp, phase fractions ``--frac-torso`` / ``--frac-approach`` / ``--frac-settle``, and ``--gripper-close-mag`` if the fingers do not visibly close.
+
 ## Planned RL backends (not wired yet)
 
 | Algorithm | Suggested stack |

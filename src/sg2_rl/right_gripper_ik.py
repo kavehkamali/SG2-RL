@@ -19,6 +19,7 @@ class RightGripperIKContext:
     jacobi_joint_ids: list[int]
     right_joint_ids: list[int]
     right_arm_indices_in_arms: list[int]
+    right_gripper_indices_in_arms: list[int]
     lift_slice: slice
     arms_slice: slice
     wheels_slice: slice
@@ -77,6 +78,8 @@ def build_right_gripper_ik(robot, action_manager, device: torch.device, num_envs
         name_to_i = {n: i for i, n in enumerate(arms_term_names)}
         right_arm_indices_in_arms = [name_to_i[n] for n in right_joint_names if n in name_to_i]
 
+    right_gripper_indices_in_arms = [i for i, n in enumerate(arms_term_names) if n.startswith("gripper_r_joint")]
+
     lift_ids, _ = robot.find_joints(["lift_joint"])
     lift_joint_id = lift_ids[0] if lift_ids else None
 
@@ -89,6 +92,7 @@ def build_right_gripper_ik(robot, action_manager, device: torch.device, num_envs
         jacobi_joint_ids=jacobi_joint_ids,
         right_joint_ids=right_joint_ids,
         right_arm_indices_in_arms=right_arm_indices_in_arms,
+        right_gripper_indices_in_arms=right_gripper_indices_in_arms,
         lift_slice=lift_slice,
         arms_slice=arms_slice,
         wheels_slice=wheels_slice,
@@ -101,12 +105,28 @@ def build_right_gripper_ik(robot, action_manager, device: torch.device, num_envs
     )
 
 
+def actions_lift_only(ctx: RightGripperIKContext, robot, lift_target: float) -> torch.Tensor:
+    """Torso ``lift_joint`` only; arms/wheels action slots zero → hold defaults."""
+    device = ctx.device
+    n = ctx.num_envs
+    default_joint_pos = robot.data.default_joint_pos.to(device)
+    actions = torch.zeros((n, ctx.act_dim), device=device)
+    if ctx.lift_dim > 0 and ctx.lift_joint_id is not None:
+        lift_default = default_joint_pos[:, ctx.lift_term_ids]
+        lift_tgt = torch.full_like(lift_default, float(lift_target))
+        actions[:, ctx.lift_slice] = (lift_tgt - lift_default) / ctx.lift_scale
+    return torch.clamp(actions, -ctx.raw_clip, ctx.raw_clip)
+
+
 def actions_for_ee_goal(
     ctx: RightGripperIKContext,
     robot,
     ee_pos_des: torch.Tensor,
     *,
     min_z: torch.Tensor,
+    lift_target: float | None = None,
+    gripper_r_close: bool = False,
+    gripper_r_close_mag: float = 0.48,
 ) -> torch.Tensor:
     """One IK solve + raw action vector (torso lift + right arm; other act terms 0)."""
     device = ctx.device
@@ -134,8 +154,9 @@ def actions_for_ee_goal(
 
     if ctx.lift_dim > 0 and ctx.lift_joint_id is not None:
         lift_default = default_joint_pos[:, ctx.lift_term_ids]
-        lift_target = torch.full_like(lift_default, float(ctx.lift_target))
-        actions[:, ctx.lift_slice] = (lift_target - lift_default) / ctx.lift_scale
+        lt = float(ctx.lift_target) if lift_target is None else float(lift_target)
+        lift_tgt = torch.full_like(lift_default, lt)
+        actions[:, ctx.lift_slice] = (lift_tgt - lift_default) / ctx.lift_scale
 
     arms_default = default_joint_pos[:, ctx.arms_term_ids]
     arms_target = arms_default.clone()
@@ -143,6 +164,9 @@ def actions_for_ee_goal(
         raise RuntimeError("Right-arm index / q_des mismatch")
     for j, local_i in enumerate(ctx.right_arm_indices_in_arms):
         arms_target[:, local_i] = q_des[:, j]
+    if gripper_r_close and ctx.right_gripper_indices_in_arms:
+        for local_i in ctx.right_gripper_indices_in_arms:
+            arms_target[:, local_i] = arms_default[:, local_i] + float(gripper_r_close_mag)
     actions[:, ctx.arms_slice] = (arms_target - arms_default) / ctx.arms_scale
 
     return torch.clamp(actions, -ctx.raw_clip, ctx.raw_clip)

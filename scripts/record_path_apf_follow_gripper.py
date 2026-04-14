@@ -23,8 +23,8 @@ parser.add_argument("--num_envs", type=int, default=1)
 parser.add_argument(
     "--video_length",
     type=int,
-    default=720,
-    help="Longer default (2× prior 360) so the full gripper motion is visible.",
+    default=1440,
+    help="Default 1440 frames (2× prior 720) so the full gripper motion is visible.",
 )
 parser.add_argument("--video_folder", type=str, default="")
 parser.add_argument("--seed", type=int, default=0)

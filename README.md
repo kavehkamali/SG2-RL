@@ -76,7 +76,7 @@ Same polyline plus **differential IK** so the **right gripper (`arm_r_link7`)** 
 ~/projects/API/SG2-RL/scripts/run_on_tai.sh record_path_apf_follow_gripper.py --headless
 ```
 
-The follow script defaults to **`--video_length 720`** (about twice the previous 360) so the full gripper motion fits in one clip; override with `--video_length` if you want a shorter file.
+The follow script defaults to **`--video_length 1440`** (twice the prior 720 default) so the full gripper motion fits in one clip; override with `--video_length` if you want a shorter file.
 
 ## Planned RL backends (not wired yet)
 

@@ -34,6 +34,20 @@ parser.add_argument(
 parser.add_argument("--axis_len", type=float, default=0.12, help="World-axis gizmo length (m).")
 parser.add_argument("--print_every", type=int, default=30, help="Print pin/wrist world xyz every N steps (0=off).")
 parser.add_argument("--skrl_yaml", type=str, default="", help="Override absolute path to SKRL yaml for Hydra.")
+parser.add_argument(
+    "--receptive_offset_x",
+    type=float,
+    default=-0.14,
+    help="World X offset for receptive (hole) spawn only; default toward robot base.",
+)
+parser.add_argument("--receptive_offset_y", type=float, default=0.0)
+parser.add_argument("--receptive_offset_z", type=float, default=0.0)
+parser.add_argument(
+    "--shift_viewer_with_receptive",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="Shift env viewer eye/lookat with the receptive offset.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
 args_cli.enable_cameras = True
@@ -50,6 +64,10 @@ import torch  # noqa: E402
 import isaaclab_tasks  # noqa: F401, E402
 import uwlab_tasks  # noqa: F401, E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
+from sg2_rl.scene_layout import (  # noqa: E402
+    offset_receptive_and_viewer_for_world_shift,
+    offset_receptive_object_world_spawn,
+)
 from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.usd_gizmo import ensure_rgb_axes  # noqa: E402
 from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
@@ -66,6 +84,17 @@ def main(env_cfg, agent_cfg):
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
     env_cfg.log_dir = str(vpath / "run")
+
+    rdx, rdy, rdz = (
+        float(args_cli.receptive_offset_x),
+        float(args_cli.receptive_offset_y),
+        float(args_cli.receptive_offset_z),
+    )
+    if rdx != 0.0 or rdy != 0.0 or rdz != 0.0:
+        if args_cli.shift_viewer_with_receptive:
+            offset_receptive_and_viewer_for_world_shift(env_cfg, rdx, rdy, rdz)
+        else:
+            offset_receptive_object_world_spawn(env_cfg, rdx, rdy, rdz)
 
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array")
     env = gym.wrappers.RecordVideo(

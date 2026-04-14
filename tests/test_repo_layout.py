@@ -15,3 +15,4 @@ def test_repo_has_core_files():
     assert (root / "src" / "sg2_rl" / "apf_path.py").is_file()
     assert (root / "src" / "sg2_rl" / "orbit_camera.py").is_file()
     assert (root / "src" / "sg2_rl" / "arm_avoidance.py").is_file()
+    assert (root / "src" / "sg2_rl" / "scene_layout.py").is_file()

@@ -13,6 +13,7 @@ def test_repo_has_core_files():
     assert (root / "scripts" / "record_orbit_pin_wrist_gizmos.py").is_file()
     assert (root / "scripts" / "record_path_apf_visual_only.py").is_file()
     assert (root / "scripts" / "record_path_apf_follow_gripper.py").is_file()
+    assert (root / "scripts" / "run_apf_path_videos.sh").is_file()
     assert (root / "scripts" / "record_grasp_lift_peg.py").is_file()
     assert (root / "scripts" / "register_sg2_tasks.py").is_file()
     assert (root / "scripts" / "tmux_train_grasp_lift_ddp.sh").is_file()

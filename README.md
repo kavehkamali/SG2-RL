@@ -125,6 +125,17 @@ Same polyline plus **differential IK** so the **right gripper (`arm_r_link7`)** 
 
 The follow script defaults to **`--video_length 1440`** (twice the prior 720 default) so the full gripper motion fits in one clip; override with `--video_length` if you want a shorter file.
 
+### One command — record A then B again
+
+From the repo root on **tai** (after `UWLab` + local USD mirror are in place):
+
+```bash
+chmod +x scripts/run_apf_path_videos.sh scripts/run_on_tai.sh
+./scripts/run_apf_path_videos.sh
+```
+
+Optional: `VIDEO_LENGTH_A=240 VIDEO_LENGTH_B=720 ./scripts/run_apf_path_videos.sh`. Outputs land under `artifacts/videos/` (timestamped `apf_path_*` folders plus copied `apf_path_*.mp4` files).
+
 ### Step — grasp pin + lift (torso down, right gripper)
 
 Open-loop phases: lower **``lift_joint``**, right-wrist IK to the moving peg, close **``gripper_r_joint*``**, then raise wrist + torso. Same scene layout flags as the APF recorders.

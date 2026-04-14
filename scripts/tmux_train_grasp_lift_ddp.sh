@@ -7,7 +7,20 @@
 # Session name: sg2rl-grasp-ppo-ddp  (attach: tmux attach -t sg2rl-grasp-ppo-ddp)
 set -euo pipefail
 
-export UWLAB_CLOUD_ASSETS_DIR="${UWLAB_CLOUD_ASSETS_DIR:-${HOME}/uwlab_hf_assets}"
+# Same local USD root as run_on_tai.sh (no Hugging Face on tai).
+if [[ -z "${UWLAB_CLOUD_ASSETS_DIR:-}" ]]; then
+  if [[ -n "${SG2_CLOUD_ASSETS_DIR:-}" ]]; then
+    export UWLAB_CLOUD_ASSETS_DIR="${SG2_CLOUD_ASSETS_DIR}"
+  elif [[ -f "${HOME}/uwlab_sync/Props/Custom/Peg/peg.usd" ]]; then
+    export UWLAB_CLOUD_ASSETS_DIR="${HOME}/uwlab_sync"
+  elif [[ -f "${HOME}/uwlab_hf_assets/Props/Custom/Peg/peg.usd" ]]; then
+    export UWLAB_CLOUD_ASSETS_DIR="${HOME}/uwlab_hf_assets"
+  else
+    export UWLAB_CLOUD_ASSETS_DIR="${HOME}/uwlab_sync"
+  fi
+else
+  export UWLAB_CLOUD_ASSETS_DIR
+fi
 export OMNI_KIT_ACCEPT_EULA="${OMNI_KIT_ACCEPT_EULA:-YES}"
 
 SG2_RL="${SG2_RL:-${HOME}/projects/API/SG2-RL}"

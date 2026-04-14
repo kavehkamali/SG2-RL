@@ -24,7 +24,7 @@ Or clone: push `SG2-RL` to a git remote from this machine, then `git clone` on `
 
 ## Scene source
 
-The **scene** (table, pin, hole) is **not duplicated** as USD inside this repo. Training and scripts rely on the existing **UWLab** task configs (e.g. `OmniReset-FFWSG2-PegPartialAssemblySmoke-v0`) and assets shipped with `uwlab_tasks` / `uwlab_assets`. Keep your existing `UWLab` checkout on the server and `PYTHONPATH` / Isaac Lab install layout unchanged.
+The **scene** (table, pin, hole) is **not duplicated** as USD inside this repo. Training and scripts rely on the existing **UWLab** task configs (e.g. `OmniReset-FFWSG2-PegPartialAssemblySmoke-v0`) and props on disk. Peg and hole USD must live under a local root with `Props/Custom/Peg/` and `Props/Custom/PegHole/` (see `scripts/run_on_tai.sh`: defaults to `~/uwlab_sync` on **tai** when present — **Hugging Face is not required**). Set `UWLAB_CLOUD_ASSETS_DIR` or `SG2_CLOUD_ASSETS_DIR` if your mirror path differs. Keep your `UWLab` checkout and Isaac Lab layout as today.
 
 ## SSH from `home-linux` to `10.225.68.32`
 

@@ -27,9 +27,12 @@ Do these on a machine that already matches your UWLab + Isaac layout (e.g. **tai
    - `SG2-RL` at `~/projects/API/SG2-RL` (this repo).  
    - Use the same **`env_uwlab`** interpreter as training (`…/UWLab/env_uwlab/bin/python`).
 
-2. **HF assets mirror** (peg / hole USD, same as other UWLab peg jobs)  
+2. **Local USD mirror** (peg / hole props — **no Hugging Face required** on air-gapped hosts)  
+   Use a directory whose layout matches UWLab’s cloud bundle, i.e. it contains  
+   `Props/Custom/Peg/peg.usd` and `Props/Custom/PegHole/peg_hole.usd` (for example an extracted `uwlab_mirror_*.tar.gz` tree, or `~/uwlab_sync` on **tai** if you keep that mirror there).  
    ```bash
-   export UWLAB_CLOUD_ASSETS_DIR="${UWLAB_CLOUD_ASSETS_DIR:-$HOME/uwlab_hf_assets}"
+   export UWLAB_CLOUD_ASSETS_DIR="${UWLAB_CLOUD_ASSETS_DIR:-$HOME/uwlab_sync}"
+   # or: export SG2_CLOUD_ASSETS_DIR=/path/to/root  # run_on_tai.sh maps this to UWLAB_CLOUD_ASSETS_DIR
    ```
 
 3. **Smoke** (confirms task + PhysX load)  
@@ -65,10 +68,10 @@ Do these on a machine that already matches your UWLab + Isaac layout (e.g. **tai
 ## On **tai** (`10.225.68.32`)
 
 Use the same **`env_uwlab`** interpreter as UWLab training (paths match a default clone layout).  
-**Props (e.g. `peg.usd`)** load from your HF assets mirror — same as `run_m7_train_peg_rl.sh`:
+**Props (e.g. `peg.usd`)** load from a **local** USD root (`Props/Custom/...`). `run_on_tai.sh` defaults to `~/uwlab_sync` when that tree is present, else falls back to `~/uwlab_hf_assets`. Override if your mirror lives elsewhere (e.g. after extracting `~/uwlab_mirror_*.tar.gz`):
 
 ```bash
-export UWLAB_CLOUD_ASSETS_DIR="${UWLAB_CLOUD_ASSETS_DIR:-$HOME/uwlab_hf_assets}"
+export UWLAB_CLOUD_ASSETS_DIR="${UWLAB_CLOUD_ASSETS_DIR:-$HOME/uwlab_sync}"
 export UWLAB="${UWLAB:-$HOME/projects/API/UWLab}"
 export SG2_RL="${SG2_RL:-$HOME/projects/API/SG2-RL}"
 chmod +x "$SG2_RL/scripts/run_on_tai.sh"

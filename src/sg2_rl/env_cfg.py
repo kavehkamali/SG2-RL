@@ -122,16 +122,17 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
-            intensity=750.0,
-            color=(0.93, 0.95, 1.0),
+            intensity=1000.0,
+            color=(1.0, 1.0, 1.0),
+            texture_file=f"{_ASSETS_DIR}/textures/kloofendal_43d_clear_puresky_1k.hdr",
         ),
     )
 
     sun_light = AssetBaseCfg(
         prim_path="/World/sunLight",
         spawn=sim_utils.DistantLightCfg(
-            intensity=2500.0,
-            color=(1.0, 0.98, 0.92),
+            intensity=3000.0,
+            color=(1.0, 0.97, 0.90),
             angle=0.53,
         ),
         init_state=AssetBaseCfg.InitialStateCfg(

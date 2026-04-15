@@ -125,7 +125,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
-            intensity=2000.0,
+            intensity=600.0,
             color=(1.0, 1.0, 1.0),
         ),
     )
@@ -133,7 +133,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     key_light = AssetBaseCfg(
         prim_path="/World/keyLight",
         spawn=sim_utils.DistantLightCfg(
-            intensity=3000.0,
+            intensity=1000.0,
             color=(1.0, 0.98, 0.95),
             angle=1.0,
         ),

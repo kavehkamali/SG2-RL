@@ -64,7 +64,7 @@ class ProgressContext(ManagerTermBase):
     def reset(self, env_ids=None):
         super().reset(env_ids)
 
-    def __call__(self, env, **kwargs) -> torch.Tensor:
+    def __call__(self, env, insertive_asset_cfg=None, receptive_asset_cfg=None) -> torch.Tensor:
         return torch.zeros(env.num_envs, device=env.device)
 
 
@@ -87,7 +87,7 @@ def success_reward(
     return torch.zeros(env.num_envs, device=env.device)
 
 
-def collision_free(env: ManagerBasedRLEnv, **kwargs) -> torch.Tensor:
+def collision_free(env: ManagerBasedRLEnv) -> torch.Tensor:
     """Stub: returns 0 (original uses Warp-based SDF)."""
     return torch.zeros(env.num_envs, device=env.device)
 
@@ -111,7 +111,7 @@ def time_out(env: ManagerBasedRLEnv) -> torch.Tensor:
 # (stubs — only needed if those configs are instantiated)
 # ---------------------------------------------------------------------------
 
-def wrist_min_distance_to_asset_exp(env, **kwargs) -> torch.Tensor:
+def wrist_min_distance_to_asset_exp(env, robot_cfg=None, target_asset_cfg=None, sigma=0.32) -> torch.Tensor:
     return torch.zeros(env.num_envs, device=env.device)
 
 
@@ -120,21 +120,21 @@ class WristToInsertiveApproachProgress(ManagerTermBase):
         super().__init__(cfg, env)
     def reset(self, env_ids=None):
         super().reset(env_ids)
-    def __call__(self, env, **kwargs) -> torch.Tensor:
+    def __call__(self, env, insertive_asset_cfg=None, receptive_asset_cfg=None) -> torch.Tensor:
         return torch.zeros(env.num_envs, device=env.device)
 
 
-def insertive_xy_near_receptor_tanh(env, **kwargs) -> torch.Tensor:
+def insertive_xy_near_receptor_tanh(env, insertive_asset_cfg=None, receptive_asset_cfg=None, std=0.16) -> torch.Tensor:
     return torch.zeros(env.num_envs, device=env.device)
 
 
-def insertive_height_above_surface(env, **kwargs) -> torch.Tensor:
+def insertive_height_above_surface(env, insertive_asset_cfg=None, surface_z=0.82, scale=0.07) -> torch.Tensor:
     return torch.zeros(env.num_envs, device=env.device)
 
 
-def gripper_excitation_near_insertive(env, **kwargs) -> torch.Tensor:
+def gripper_excitation_near_insertive(env, robot_cfg=None, insertive_asset_cfg=None, gripper_joint_cfg=None, proximity_std=0.30, joint_scale=0.35) -> torch.Tensor:
     return torch.zeros(env.num_envs, device=env.device)
 
 
-def wrists_clearance_above_surface_exp(env, **kwargs) -> torch.Tensor:
+def wrists_clearance_above_surface_exp(env, robot_cfg=None, surface_z=0.82, min_clearance_m=0.18, sigma_m=0.048) -> torch.Tensor:
     return torch.zeros(env.num_envs, device=env.device)

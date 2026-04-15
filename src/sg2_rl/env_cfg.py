@@ -63,6 +63,11 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.CuboidCfg(
             size=(1.0, 0.75, _TABLE_THICKNESS_M),
             copy_from_source=False,
+            visual_material=sim_utils.PreviewSurfaceCfg(
+                diffuse_color=(0.55, 0.52, 0.48),
+                roughness=0.3,
+                metallic=0.15,
+            ),
             physics_material_path="/World/SG2RL_SharedMaterials/TablePhys",
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.75, dynamic_friction=0.75, restitution=0.0,
@@ -116,7 +121,10 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     ground = AssetBaseCfg(
         prim_path="/World/GroundPlane",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
-        spawn=sim_utils.GroundPlaneCfg(),
+        spawn=sim_utils.GroundPlaneCfg(
+            color=(0.15, 0.18, 0.25),
+            size=(100.0, 100.0),
+        ),
     )
 
     sky_light = AssetBaseCfg(

@@ -20,7 +20,6 @@ from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
-from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
 from sg2_rl import task_mdp
 from sg2_rl.robot_cfg import FFW_SG2_CFG
@@ -123,8 +122,20 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
-            intensity=1000.0,
-            texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",
+            intensity=750.0,
+            color=(0.93, 0.95, 1.0),
+        ),
+    )
+
+    sun_light = AssetBaseCfg(
+        prim_path="/World/sunLight",
+        spawn=sim_utils.DistantLightCfg(
+            intensity=2500.0,
+            color=(1.0, 0.98, 0.92),
+            angle=0.53,
+        ),
+        init_state=AssetBaseCfg.InitialStateCfg(
+            rot=(0.866, 0.0, 0.25, -0.433),
         ),
     )
 

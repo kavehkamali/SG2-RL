@@ -1,3 +1,3 @@
-"""SG2-RL: minimal RL tooling around the UWLab FFWSG2 peg scene."""
+"""SG2-RL: self-contained RL tooling for the FFW SG2 peg-in-hole scene."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

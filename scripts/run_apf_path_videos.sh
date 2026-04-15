@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Record APF path-planning videos (A: polyline only, B: gripper follows path).
-# Run on the Isaac + UWLab machine (e.g. tai). Uses run_on_tai.sh for PYTHONPATH, assets, and cwd.
+# Run on tai with SG2-RL local .venv.
 #
 # Usage:
 #   chmod +x scripts/run_apf_path_videos.sh
 #   ./scripts/run_apf_path_videos.sh
 # Optional env:
 #   VIDEO_LENGTH_A=300 VIDEO_LENGTH_B=480 EXTRA_ARGS="--headless"
-#   UWLAB_CLOUD_ASSETS_DIR=...   # or SG2_CLOUD_ASSETS_DIR (see run_on_tai.sh)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

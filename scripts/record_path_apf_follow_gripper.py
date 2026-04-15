@@ -84,8 +84,8 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import gymnasium as gym  # noqa: E402
 
-import isaaclab_tasks  # noqa: F401, E402
-import uwlab_tasks  # noqa: F401, E402
+# (removed: isaaclab_tasks — tasks registered locally)
+# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
 from sg2_rl.arm_avoidance import (  # noqa: E402
     nudge_ee_des_for_arm_spheres,
@@ -97,7 +97,7 @@ from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402
 from sg2_rl.right_gripper_ik import actions_for_ee_goal, build_right_gripper_ik  # noqa: E402
 from sg2_rl.scene_layout import apply_peg_hole_workspace_shift  # noqa: E402
 from sg2_rl.usd_path_curve import draw_planned_path_polyline  # noqa: E402
-from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
+from sg2_rl.config_loader import task_config  # noqa: E402
 
 
 def _interp_path(path: list[list[float]], s01: float) -> np.ndarray:
@@ -113,7 +113,7 @@ def _interp_path(path: list[list[float]], s01: float) -> np.ndarray:
     return (1.0 - a) * p0 + a * p1
 
 
-@hydra_task_compose(args_cli.task, "skrl_cfg_entry_point", [])
+@task_config(args_cli.task, "skrl_cfg_entry_point", [])
 def main(env_cfg, agent_cfg):
     vf = args_cli.video_folder.strip() or str(
         _REPO_ROOT / "artifacts" / "videos" / f"apf_path_follow_{time.strftime('%Y%m%d_%H%M%S')}"

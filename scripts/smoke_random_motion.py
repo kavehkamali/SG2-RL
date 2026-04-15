@@ -28,13 +28,13 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 import gymnasium as gym  # noqa: E402
 import torch  # noqa: E402
 
-import isaaclab_tasks  # noqa: F401, E402
-import uwlab_tasks  # noqa: F401, E402
+# (removed: isaaclab_tasks — tasks registered locally)
+# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
-from uwlab_tasks.utils.hydra import hydra_task_compose  # noqa: E402
+from sg2_rl.config_loader import task_config  # noqa: E402
 
 
-@hydra_task_compose(args_cli.task, "skrl_cfg_entry_point", [])
+@task_config(args_cli.task, "skrl_cfg_entry_point", [])
 def main(env_cfg, agent_cfg):
     ensure_task_registered(args_cli.task, args_cli.skrl_yaml)
     env_cfg.scene.num_envs = args_cli.num_envs

@@ -61,7 +61,7 @@ def apply_peg_hole_workspace_shift(
       insertive root XY is set from the receptive root XY plus these offsets. Peg **Z** is
       kept from the post-cluster insertive pose (table height).
 
-    UWLab defaults put the pin at ``+0.10`` m in world **X** from the hole (pin away from the
+    Stock defaults put the pin at ``+0.10`` m in world **X** from the hole (pin away from the
     robot). Use ``peg_offset_x_from_hole=-0.10`` for the same spacing with the pin **toward**
     the robot (−X in that layout). Magnitude ``0.10`` matches the stock lateral offset.
     """

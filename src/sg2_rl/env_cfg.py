@@ -125,7 +125,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
             intensity=1000.0,
-            texture_file=f"{_ASSETS_DIR}/textures/blue_photo_studio_2k.hdr",
+            texture_file=f"{_ASSETS_DIR}/textures/kloofendal_43d_clear_puresky_4k.hdr",
         ),
     )
 

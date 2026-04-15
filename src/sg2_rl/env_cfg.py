@@ -116,15 +116,25 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     ground = AssetBaseCfg(
         prim_path="/World/GroundPlane",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
-        spawn=sim_utils.GroundPlaneCfg(color=None, usd_path=f"{_ASSETS_DIR}/environments/default_environment.usd",
+        spawn=sim_utils.GroundPlaneCfg(
+            usd_path=f"{_ASSETS_DIR}/environments/default_environment.usd",
+            color=(0.08, 0.08, 0.08),
         ),
     )
 
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
-            intensity=1000.0,
-            texture_file=f"{_ASSETS_DIR}/textures/kloofendal_43d_clear_puresky_4k.hdr",
+            intensity=1500.0,
+            color=(0.12, 0.15, 0.35),
+        ),
+    )
+
+    fill_light = AssetBaseCfg(
+        prim_path="/World/fillLight",
+        spawn=sim_utils.DistantLightCfg(
+            intensity=800.0,
+            color=(0.85, 0.90, 1.0),
         ),
     )
 

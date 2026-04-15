@@ -116,8 +116,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
     ground = AssetBaseCfg(
         prim_path="/World/GroundPlane",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
-        spawn=sim_utils.GroundPlaneCfg(color=None,
-            usd_path=f"{_ASSETS_DIR}/environments/default_environment.usd",
+        spawn=sim_utils.GroundPlaneCfg(color=None, usd_path=f"{_ASSETS_DIR}/environments/default_environment.usd",
         ),
     )
 

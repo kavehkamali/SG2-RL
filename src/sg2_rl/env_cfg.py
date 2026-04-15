@@ -63,11 +63,6 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.CuboidCfg(
             size=(1.0, 0.75, _TABLE_THICKNESS_M),
             copy_from_source=False,
-            visual_material=sim_utils.PreviewSurfaceCfg(
-                diffuse_color=(0.55, 0.52, 0.48),
-                roughness=0.3,
-                metallic=0.15,
-            ),
             physics_material_path="/World/SG2RL_SharedMaterials/TablePhys",
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.75, dynamic_friction=0.75, restitution=0.0,
@@ -122,8 +117,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
         prim_path="/World/GroundPlane",
         init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
         spawn=sim_utils.GroundPlaneCfg(
-            color=(0.15, 0.18, 0.25),
-            size=(100.0, 100.0),
+            usd_path=f"{_ASSETS_DIR}/environments/default_environment.usd",
         ),
     )
 
@@ -131,20 +125,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
             intensity=1000.0,
-            color=(1.0, 1.0, 1.0),
-            texture_file=f"{_ASSETS_DIR}/textures/kloofendal_43d_clear_puresky_1k.hdr",
-        ),
-    )
-
-    sun_light = AssetBaseCfg(
-        prim_path="/World/sunLight",
-        spawn=sim_utils.DistantLightCfg(
-            intensity=3000.0,
-            color=(1.0, 0.97, 0.90),
-            angle=0.53,
-        ),
-        init_state=AssetBaseCfg.InitialStateCfg(
-            rot=(0.866, 0.0, 0.25, -0.433),
+            texture_file=f"{_ASSETS_DIR}/textures/kloofendal_43d_clear_puresky_4k.hdr",
         ),
     )
 

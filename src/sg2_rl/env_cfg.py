@@ -323,7 +323,7 @@ class FfwSg2PegPartialAssemblySmokeEnvCfg(ManagerBasedRLEnvCfg):
     viewer: ViewerCfg = ViewerCfg(
         eye=(2.55, 0.0, 1.10),
         lookat=(_PEG_HOLE_XY[0], _PEG_HOLE_XY[1], _TABLE_SURFACE_Z + 0.12),
-        origin_type="world", env_index=0, asset_name="receptive_object", resolution=(960, 540),
+        origin_type="world", env_index=0, asset_name="receptive_object", resolution=(1920, 1080),
     )
 
     def __post_init__(self):

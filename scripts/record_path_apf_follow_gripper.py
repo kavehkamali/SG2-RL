@@ -82,6 +82,9 @@ simulation_app = app_launcher.app
 
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
+from sg2_rl.render_quality import enable_high_quality  # noqa: E402
+enable_high_quality(resolution=(1920, 1080))
+
 import gymnasium as gym  # noqa: E402
 
 # (removed: isaaclab_tasks — tasks registered locally)

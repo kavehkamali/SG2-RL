@@ -82,7 +82,7 @@ simulation_app = app_launcher.app
 
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
-from sg2_rl.render_quality import enable_high_quality  # noqa: E402
+from sg2_rl.render_quality import enable_high_quality, warm_up_renderer  # noqa: E402
 enable_high_quality(resolution=(1920, 1080))
 
 import gymnasium as gym  # noqa: E402
@@ -159,6 +159,7 @@ def main(env_cfg, agent_cfg):
     _ = obs
 
     unwrapped = env.unwrapped
+    warm_up_renderer(unwrapped.sim, num_steps=30)
     device = torch.device(env_cfg.sim.device if str(env_cfg.sim.device).startswith("cuda") else "cuda:0")
     n = args_cli.num_envs
 

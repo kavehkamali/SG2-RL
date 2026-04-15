@@ -1,7 +1,6 @@
-"""FFW-SG2 peg-in-hole env configs — self-contained, no uwlab imports.
+"""FFW-SG2 peg-in-hole env configs — self-contained.
 
 Scene: FFW-SG2 robot + work surface (kinematic cuboid) + peg + peg-hole + ground + skylight.
-The exact geometry, positions, and physics settings are preserved from the original UWLab config.
 """
 from __future__ import annotations
 
@@ -35,7 +34,7 @@ _ASSETS_DIR = str(Path(__file__).resolve().parents[2] / "assets")
 _PROPS_DIR = os.environ.get("SG2_PROPS_DIR", os.path.join(_ASSETS_DIR, "props"))
 
 # ---------------------------------------------------------------------------
-# Scene geometry constants (identical to UWLab config)
+# Scene geometry constants (scene geometry constants)
 # ---------------------------------------------------------------------------
 _TABLE_THICKNESS_M = 0.05
 _TABLE_SURFACE_Z = 0.82

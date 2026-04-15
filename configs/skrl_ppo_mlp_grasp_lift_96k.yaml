@@ -1,8 +1,8 @@
-# Copyright (c) 2024-2026, The UW Lab Project Developers.
+# Copyright (c) 2024-2026, SG2-RL contributors.
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # PPO + MLP on vector observations (no vision) for FFWSG2 peg smoke:
-# policy obs already include joint state, peg/hole poses in robot frame (UWLab env cfg).
+# policy obs already include joint state, peg/hole poses in robot frame (SG2 peg scene MLP PPO).
 #
 # ``trainer.timesteps`` is SKRL's total env-step budget (vectorized). Rough order-of-magnitude
 # PPO gradient updates ≈ timesteps / (global_num_envs * agent.rollouts). Example: 92.16e9

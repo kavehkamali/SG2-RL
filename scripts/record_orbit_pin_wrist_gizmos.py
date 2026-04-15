@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Orbit camera + RGB axis gizmos at pin and right wrist; record MP4 (FFW SG2 peg scene via UWLab)."""
+"""Orbit camera + RGB axis gizmos at pin and right wrist; record MP4 (FFW SG2 peg scene)."""
 from __future__ import annotations
 
 import argparse
@@ -68,8 +68,8 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 import gymnasium as gym  # noqa: E402
 import torch  # noqa: E402
 
-# (removed: isaaclab_tasks — tasks registered locally)
-# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
+
+
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
 from sg2_rl.scene_layout import apply_peg_hole_workspace_shift  # noqa: E402
 from sg2_rl.orbit_camera import orbit_lookat_shifted_toward_robot  # noqa: E402

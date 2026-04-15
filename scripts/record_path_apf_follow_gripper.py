@@ -87,8 +87,8 @@ enable_high_quality(resolution=(1920, 1080))
 
 import gymnasium as gym  # noqa: E402
 
-# (removed: isaaclab_tasks — tasks registered locally)
-# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
+
+
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
 from sg2_rl.arm_avoidance import (  # noqa: E402
     nudge_ee_des_for_arm_spheres,

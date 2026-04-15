@@ -73,8 +73,8 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 import gymnasium as gym  # noqa: E402
 import torch  # noqa: E402
 
-# (removed: isaaclab_tasks — tasks registered locally)
-# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
+
+
 from sg2_rl.apf_path import default_workspace_obstacles, plan_apf_polyline  # noqa: E402
 from sg2_rl.arm_avoidance import pick_right_arm_line_base_xyz  # noqa: E402
 from sg2_rl.scene_layout import apply_peg_hole_workspace_shift  # noqa: E402

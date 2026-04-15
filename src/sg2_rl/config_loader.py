@@ -1,7 +1,6 @@
-"""Simple config loader replacing hydra_task_compose.
+"""Simple config loader for gym-registered tasks.
 
 Loads an env config class from the gym registry entry point string and returns it.
-No Hydra dependency required.
 """
 from __future__ import annotations
 

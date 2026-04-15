@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Register SG2-RL gym ids (e.g. PegMLPGraspLift) before UWLab ``train.py`` imports the task."""
+"""Register SG2-RL gym ids before training.
 from __future__ import annotations
 
 import sys

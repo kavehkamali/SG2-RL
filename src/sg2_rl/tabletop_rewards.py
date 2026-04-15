@@ -1,6 +1,6 @@
 """Approach rewards anchored to a fixed world-frame point (tabletop top center).
 
-Extracted from uwlab_tasks omnireset_sg2 config.
+Wrist-to-anchor approach rewards for tabletop tasks.
 """
 from __future__ import annotations
 

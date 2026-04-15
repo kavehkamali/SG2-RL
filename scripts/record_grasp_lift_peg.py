@@ -105,8 +105,8 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 import gymnasium as gym  # noqa: E402
 
-# (removed: isaaclab_tasks — tasks registered locally)
-# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
+
+
 from sg2_rl.arm_avoidance import nudge_ee_des_for_arm_spheres, right_arm_link_check_indices  # noqa: E402
 from sg2_rl.apf_path import default_workspace_obstacles  # noqa: E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402

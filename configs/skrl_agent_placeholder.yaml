@@ -1,4 +1,4 @@
-# Copyright (c) 2024-2026, The UW Lab Project Developers.
+# Copyright (c) 2024-2026, SG2-RL contributors.
 # SPDX-License-Identifier: BSD-3-Clause
 #
 # Minimal SKRL PPO YAML used only so Hydra can load `skrl_cfg_entry_point` for

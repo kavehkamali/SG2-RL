@@ -28,8 +28,8 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 import gymnasium as gym  # noqa: E402
 import torch  # noqa: E402
 
-# (removed: isaaclab_tasks — tasks registered locally)
-# (removed: uwlab_tasks — replaced by sg2_rl.env_cfg)
+
+
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
 from sg2_rl.config_loader import task_config  # noqa: E402
 

@@ -1,8 +1,5 @@
-"""Local MDP functions replacing uwlab_tasks.manager_based.manipulation.omnireset.mdp.
+"""Local MDP functions for the SG2-RL env config.
 
-Only the subset actually used by the SG2-RL env config is implemented here.
-Complex functions (ProgressContext, collision_free, etc.) are replaced with
-zero-return stubs since they are either weight-0 or unused by recording scripts.
 """
 from __future__ import annotations
 

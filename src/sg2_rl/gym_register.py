@@ -1,4 +1,4 @@
-"""Register FFW SG2 peg gym ids using local env configs (no uwlab dependency)."""
+"""Register FFW SG2 peg gym task IDs."""
 
 from __future__ import annotations
 

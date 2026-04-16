@@ -11,22 +11,9 @@ from sg2_rl.paths import configs_dir
 _ENV_CFG_MOD = "sg2_rl.env_cfg"
 
 REGISTERED_TASKS: dict[str, tuple[str, str]] = {
-    "OmniReset-FFWSG2-PegPartialAssemblySmoke-v0": (
-        f"{_ENV_CFG_MOD}:FfwSg2PegPartialAssemblySmokeEnvCfg",
-        "skrl_agent_placeholder.yaml",
-    ),
-    "OmniReset-FFWSG2-PegApproachOnly-A-v0": (
-        f"{_ENV_CFG_MOD}:FfwSg2PegPartialAssemblyApproachOnlyAEnvCfg",
-        "skrl_agent_placeholder.yaml",
-    ),
-    "OmniReset-FFWSG2-PegApproachOnly-B-v0": (
-        f"{_ENV_CFG_MOD}:FfwSg2PegPartialAssemblyApproachOnlyBEnvCfg",
-        "skrl_agent_placeholder.yaml",
-    ),
-    "OmniReset-FFWSG2-PegMLPGraspLift-v0": (
-        f"{_ENV_CFG_MOD}:FfwSg2PegPartialAssemblySmokeEnvCfg",
-        "skrl_ppo_mlp_grasp_lift_96k.yaml",
-    ),
+    "FFWSG2-PegSmoke-v0": (f"{_ENV_CFG_MOD}:FfwSg2PegPartialAssemblySmokeEnvCfg", "skrl_agent_placeholder.yaml"),
+    "FFWSG2-PegGraspLift-v0": (f"{_ENV_CFG_MOD}:FfwSg2PegPpoStage1EnvCfg", "skrl_ppo_mlp_stage1_grasp_lift.yaml"),
+    "FFWSG2-PegInsert-v0": (f"{_ENV_CFG_MOD}:FfwSg2PegPpoStage2EnvCfg", "skrl_ppo_mlp_stage2_insert.yaml"),
 }
 
 

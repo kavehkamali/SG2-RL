@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Multi-GPU PPO training for OmniReset-FFWSG2-PegMLPGraspLift-v0.
+# (Deprecated) Multi-GPU PPO training script (kept for reference).
 #
 # Launches a tmux session with torchrun DDP across 2 GPUs (default).
 # Uses SG2-RL's own .venv and env config — no external repos needed.
@@ -23,7 +23,7 @@ if [[ ! -x "${PY}" ]]; then
   exit 1
 fi
 
-TASK="OmniReset-FFWSG2-PegMLPGraspLift-v0"
+TASK="FFWSG2-PegGraspLift-v0"
 SKRL_YAML="${SG2_RL}/configs/skrl_ppo_mlp_grasp_lift_96k.yaml"
 LOG="/tmp/sg2rl_grasp_lift_ppo_ddp.log"
 
@@ -35,7 +35,7 @@ export OMNI_KIT_ACCEPT_EULA=YES
 
 CMD="cd '${SG2_RL}' && \
   ${SG2_RL}/.venv/bin/torchrun --nproc_per_node=${NPROC} \
-  ${SG2_RL}/.venv/bin/python -m isaaclab.train \
+  -m isaaclab.train \
     --task ${TASK} \
     --num_envs ${NUM_PER_PROC} \
     --headless \

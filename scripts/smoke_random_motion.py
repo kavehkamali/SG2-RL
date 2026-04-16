@@ -11,7 +11,7 @@ from isaaclab.app import AppLauncher
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 parser = argparse.ArgumentParser(description="SG2 peg scene — random motion smoke test.")
-parser.add_argument("--task", type=str, default="OmniReset-FFWSG2-PegPartialAssemblySmoke-v0")
+parser.add_argument("--task", type=str, default="FFWSG2-PegSmoke-v0")
 parser.add_argument("--num_envs", type=int, default=1)
 parser.add_argument("--steps", type=int, default=64)
 parser.add_argument("--seed", type=int, default=0)

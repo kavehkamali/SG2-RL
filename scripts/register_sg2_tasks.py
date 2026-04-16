@@ -12,7 +12,9 @@ from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
 
 
 def main() -> None:
-    ensure_task_registered("OmniReset-FFWSG2-PegMLPGraspLift-v0")
+    ensure_task_registered("FFWSG2-PegSmoke-v0")
+    ensure_task_registered("FFWSG2-PegGraspLift-v0")
+    ensure_task_registered("FFWSG2-PegInsert-v0")
     print("[register_sg2_tasks] OK", flush=True)
 
 

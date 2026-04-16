@@ -61,7 +61,6 @@ def nudge_ee_des_for_arm_spheres(
     """
     if not obstacles or link_pos_w.numel() == 0:
         return ee_des
-    n = ee_des.shape[0]
     delta = torch.zeros_like(ee_des)
     for o in obstacles:
         c = torch.as_tensor(o.center, device=ee_des.device, dtype=ee_des.dtype).view(1, 1, 3)

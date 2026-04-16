@@ -23,7 +23,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 PH_TORSO, PH_APPROACH, PH_SETTLE, PH_LIFT = 0, 1, 2, 3
 
 parser = argparse.ArgumentParser(description="Grasp peg + lift with wrist–pin monitoring (right arm IK).")
-parser.add_argument("--task", type=str, default="OmniReset-FFWSG2-PegPartialAssemblySmoke-v0")
+parser.add_argument("--task", type=str, default="FFWSG2-PegSmoke-v0")
 parser.add_argument("--num_envs", type=int, default=1)
 parser.add_argument("--video_length", type=int, default=1500)
 parser.add_argument("--video_folder", type=str, default="")
@@ -89,7 +89,7 @@ parser.add_argument("--monitor_every", type=int, default=20)
 parser.add_argument("--scene_shift_x", type=float, default=0.0)
 parser.add_argument("--scene_shift_y", type=float, default=0.0)
 parser.add_argument("--scene_shift_z", type=float, default=0.0)
-parser.add_argument("--peg_offset_x_from_hole", type=float, default=-0.10)
+parser.add_argument("--peg_offset_x_from_hole", type=float, default=-0.15)
 parser.add_argument("--peg_offset_y_from_hole", type=float, default=0.0)
 parser.add_argument("--shift_viewer_with_scene", action=argparse.BooleanOptionalAction, default=True)
 parser.add_argument("--skrl_yaml", type=str, default="")

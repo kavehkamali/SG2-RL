@@ -2,9 +2,13 @@
 
 ## Current: SKRL PPO (MLP)
 
-- Task: `OmniReset-FFWSG2-PegMLPGraspLift-v0`
-- Config: `configs/skrl_ppo_mlp_grasp_lift_96k.yaml`
-- Multi-GPU: `scripts/tmux_train_grasp_lift_ddp.sh` (torchrun DDP, 2 GPUs, 30k envs)
+- Tasks:
+  - Stage1: `FFWSG2-PegGraspLift-v0`
+  - Stage2: `FFWSG2-PegInsert-v0`
+- Configs:
+  - `configs/skrl_ppo_mlp_stage1_grasp_lift.yaml`
+  - `configs/skrl_ppo_mlp_stage2_insert.yaml`
+- Multi-GPU: `scripts/tmux_train_ppo_32768_ddp.sh` (torchrun DDP, 2 GPUs, 32,768 envs)
 - Observations: joint pos/vel + peg/hole poses in robot frame (vector, no pixels)
 
 ## Future

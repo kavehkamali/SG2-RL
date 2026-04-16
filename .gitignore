@@ -10,4 +10,6 @@ build/
 venv/
 artifacts/
 *.mp4
+sg2_rl_stage1_grasp_lift_mlp_ppo/
+sg2_rl_stage2_insert_mlp_ppo/
 .DS_Store

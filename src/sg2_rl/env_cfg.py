@@ -1,6 +1,9 @@
-"""FFW-SG2 peg-in-hole env configs — self-contained.
+"""FFW-SG2 peg-in-hole RL env configs (PPO-ready, state-only).
 
 Scene: FFW-SG2 robot + work surface (kinematic cuboid) + peg + peg-hole + ground + skylight.
+
+This file defines only the PPO training environments (curriculum stage1 + stage2) plus a minimal smoke env.
+Older approach-only variants were intentionally removed to keep the training surface area small.
 """
 from __future__ import annotations
 
@@ -21,11 +24,8 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.utils import configclass
 
 from sg2_rl import task_mdp
+from sg2_rl.physics_material_bind import bind_sg2rl_prop_shared_physics_materials
 from sg2_rl.robot_cfg import FFW_SG2_CFG
-from sg2_rl.tabletop_rewards import (
-    WristsToWorldPointApproachProgressSum,
-    wrists_min_distance_to_world_point_exp_sum,
-)
 
 # ---------------------------------------------------------------------------
 # Asset paths — props shipped in-repo, robot USD external
@@ -41,9 +41,15 @@ _TABLE_SURFACE_Z = 0.82
 _TABLE_CENTER_Z = _TABLE_SURFACE_Z - _TABLE_THICKNESS_M / 2.0
 _ROBOT_HEAD_WIDTH_M = 0.20
 _SCENE_FORWARD_OFFSET_X = 0.30 + _ROBOT_HEAD_WIDTH_M
-_PEG_HOLE_XY = (0.12 + _SCENE_FORWARD_OFFSET_X, 0.0)
+# Default layout overrides:
+# - Move the hole (and thus the whole cluster) toward the robot.
+# - Place the pin even closer toward the robot relative to the hole.
+_HOLE_SHIFT_TOWARD_ROBOT_X = -0.10
+_PEG_OFFSET_FROM_HOLE_X = -0.15
+
+_PEG_HOLE_XY = (0.12 + _SCENE_FORWARD_OFFSET_X + _HOLE_SHIFT_TOWARD_ROBOT_X, 0.0)
 _TABLETOP_TOP_CENTER_XYZ = (_PEG_HOLE_XY[0] + 0.03, _PEG_HOLE_XY[1], _TABLE_SURFACE_Z)
-_PEG_TABLE_OFFSET_X = 0.10
+_PEG_TABLE_OFFSET_X = _PEG_OFFSET_FROM_HOLE_X
 _RECEPTIVE_SPAWN_Z = _TABLE_SURFACE_Z + 0.14
 _PEG_ON_TABLE_Z = _TABLE_SURFACE_Z + 0.025
 
@@ -87,7 +93,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
                 solver_position_iteration_count=4, solver_velocity_iteration_count=0,
                 disable_gravity=False, kinematic_enabled=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.02),
+            # Mass is defined in peg.usd; avoid modify_mass_properties on instanced props at high num_envs.
         ),
         init_state=RigidObjectCfg.InitialStateCfg(
             pos=(_PEG_HOLE_XY[0] + _PEG_TABLE_OFFSET_X, _PEG_HOLE_XY[1], _PEG_ON_TABLE_Z),
@@ -104,7 +110,7 @@ class FfwSg2PegPartialAssemblySceneCfg(InteractiveSceneCfg):
                 solver_position_iteration_count=4, solver_velocity_iteration_count=0,
                 disable_gravity=False, kinematic_enabled=False,
             ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=0.5),
+            # Mass is defined in peg_hole.usd; avoid modify_mass_properties on instanced props at high num_envs.
         ),
         init_state=RigidObjectCfg.InitialStateCfg(
             pos=(_PEG_HOLE_XY[0], _PEG_HOLE_XY[1], _RECEPTIVE_SPAWN_Z),
@@ -172,6 +178,8 @@ class FfwSg2PegPartialAssemblyObservationsCfg:
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, params={"asset_cfg": SceneEntityCfg("robot")})
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, params={"asset_cfg": SceneEntityCfg("robot")})
         last_action = ObsTerm(func=mdp.last_action)
+        peg_vel_w = ObsTerm(func=task_mdp.asset_root_lin_ang_vel_w, params={"asset_cfg": SceneEntityCfg("insertive_object")})
+        hole_vel_w = ObsTerm(func=task_mdp.asset_root_lin_ang_vel_w, params={"asset_cfg": SceneEntityCfg("receptive_object")})
         peg_in_hole_frame = ObsTerm(
             func=task_mdp.target_asset_pose_in_root_asset_frame,
             params={"target_asset_cfg": SceneEntityCfg("insertive_object"),
@@ -211,6 +219,8 @@ class FfwSg2PegInsertionRewardsCfg:
                 "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
     collision_free = RewTerm(func=task_mdp.collision_free, weight=0.25, params={})
     action_magnitude = RewTerm(func=task_mdp.action_l2_clamped, weight=-1e-4)
+    action_smoothness = RewTerm(func=task_mdp.action_delta_l2_clamped, weight=-3e-4)
+    time_penalty = RewTerm(func=task_mdp.time_penalty, weight=-2e-3)
 
 
 @configclass
@@ -238,40 +248,69 @@ class FfwSg2PegInsertionRewardsApproachLiftCfg:
                 "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
     collision_free = RewTerm(func=task_mdp.collision_free, weight=0.14, params={})
     action_magnitude = RewTerm(func=task_mdp.action_l2_clamped, weight=-1e-4)
+    action_smoothness = RewTerm(func=task_mdp.action_delta_l2_clamped, weight=-3e-4)
+    time_penalty = RewTerm(func=task_mdp.time_penalty, weight=-2e-3)
 
 
 @configclass
-class FfwSg2PegInsertionRewardsApproachOnlyCfgA:
-    wrists_clearance_above_surface = RewTerm(func=task_mdp.wrists_clearance_above_surface_exp, weight=0.58,
-        params={"robot_cfg": SceneEntityCfg("robot"), "surface_z": _TABLE_SURFACE_Z, "min_clearance_m": 0.18, "sigma_m": 0.048})
-    both_wrists_to_pin = RewTerm(func=wrists_min_distance_to_world_point_exp_sum, weight=0.38,
-        params={"robot_cfg": SceneEntityCfg("robot"), "anchor_xyz": _TABLETOP_TOP_CENTER_XYZ, "sigma": 0.36})
-    both_wrists_approach_progress = RewTerm(func=WristsToWorldPointApproachProgressSum, weight=0.32,
-        params={"robot_cfg": SceneEntityCfg("robot"), "anchor_xyz": _TABLETOP_TOP_CENTER_XYZ, "clip_m": 0.018})
-    dense_success_reward = RewTerm(func=task_mdp.dense_success_reward, weight=0.28,
-        params={"std": 0.22, "insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
-    success_reward = RewTerm(func=task_mdp.success_reward, weight=1.0,
-        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
-    action_magnitude = RewTerm(func=task_mdp.action_l2_clamped, weight=-1e-4)
+class FfwSg2PegInsertionRewardsCurriculumFullCfg:
+    """Stage2: keep grasp/lift shaping but emphasize insertion."""
 
+    progress_context = RewTerm(
+        func=task_mdp.ProgressContext,
+        weight=0.0,
+        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object")},
+    )
 
-@configclass
-class FfwSg2PegInsertionRewardsApproachOnlyCfgB:
-    wrists_clearance_above_surface = RewTerm(func=task_mdp.wrists_clearance_above_surface_exp, weight=0.42,
-        params={"robot_cfg": SceneEntityCfg("robot"), "surface_z": _TABLE_SURFACE_Z, "min_clearance_m": 0.18, "sigma_m": 0.042})
-    both_wrists_to_pin = RewTerm(func=wrists_min_distance_to_world_point_exp_sum, weight=0.52,
-        params={"robot_cfg": SceneEntityCfg("robot"), "anchor_xyz": _TABLETOP_TOP_CENTER_XYZ, "sigma": 0.22})
-    both_wrists_approach_progress = RewTerm(func=WristsToWorldPointApproachProgressSum, weight=0.40,
-        params={"robot_cfg": SceneEntityCfg("robot"), "anchor_xyz": _TABLETOP_TOP_CENTER_XYZ, "clip_m": 0.011})
-    dense_success_reward = RewTerm(func=task_mdp.dense_success_reward, weight=0.28,
-        params={"std": 0.22, "insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
-    success_reward = RewTerm(func=task_mdp.success_reward, weight=1.0,
-        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
+    # Grasp/lift shaping (keep agent competent at holding/lifting).
+    wrist_to_peg = RewTerm(
+        func=task_mdp.wrist_min_distance_to_asset_exp,
+        weight=0.22,
+        params={"robot_cfg": SceneEntityCfg("robot"), "target_asset_cfg": SceneEntityCfg("insertive_object"), "sigma": 0.28},
+    )
+    wrist_approach_progress = RewTerm(
+        func=task_mdp.WristToInsertiveApproachProgress,
+        weight=0.28,
+        params={"robot_cfg": SceneEntityCfg("robot"), "target_asset_cfg": SceneEntityCfg("insertive_object"), "clip_m": 0.010},
+    )
+    peg_lift = RewTerm(
+        func=task_mdp.insertive_height_above_surface,
+        weight=0.26,
+        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "surface_z": _TABLE_SURFACE_Z, "scale": 0.06},
+    )
+    gripper_near_peg = RewTerm(
+        func=task_mdp.gripper_excitation_near_insertive,
+        weight=0.20,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "insertive_asset_cfg": SceneEntityCfg("insertive_object"),
+            "gripper_joint_cfg": SceneEntityCfg("robot", joint_names=["gripper_l_joint1", "gripper_r_joint1"]),
+            "proximity_std": 0.26,
+            "joint_scale": 0.30,
+        },
+    )
+
+    # Insertion shaping (dominant).
+    peg_xy_to_hole = RewTerm(
+        func=task_mdp.insertive_xy_near_receptor_tanh,
+        weight=0.55,
+        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object"), "std": 0.06},
+    )
+    dense_success_reward = RewTerm(
+        func=task_mdp.dense_success_reward,
+        weight=0.75,
+        params={"std": 0.06, "insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object")},
+    )
+    success_reward = RewTerm(
+        func=task_mdp.success_reward,
+        weight=2.5,
+        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object")},
+    )
+
+    collision_free = RewTerm(func=task_mdp.collision_free, weight=0.10, params={})
     action_magnitude = RewTerm(func=task_mdp.action_l2_clamped, weight=-1e-4)
+    action_smoothness = RewTerm(func=task_mdp.action_delta_l2_clamped, weight=-3e-4)
+    time_penalty = RewTerm(func=task_mdp.time_penalty, weight=-3e-3)
 
 
 # ===================================================================
@@ -280,9 +319,18 @@ class FfwSg2PegInsertionRewardsApproachOnlyCfgB:
 @configclass
 class FfwSg2PegInsertionTerminationsCfg:
     time_out = DoneTerm(func=task_mdp.time_out, time_out=True)
+    success = DoneTerm(
+        func=task_mdp.insertion_success_done,
+        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object")},
+    )
 
 @configclass
 class FfwSg2PegInsertionEventsCfgSmokeArmAndPeg:
+    bind_prop_shared_physics_materials = EventTerm(
+        func=bind_sg2rl_prop_shared_physics_materials,
+        mode="startup",
+        params={},
+    )
     reset_arm_joints = EventTerm(
         func=mdp.reset_joints_by_offset, mode="reset",
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["arm_l_joint.*", "arm_r_joint.*"]),
@@ -321,6 +369,55 @@ class FfwSg2PegInsertionEventsCfgApproachOnlyShared:
                 "asset_cfg": SceneEntityCfg("insertive_object")})
 
 
+@configclass
+class FfwSg2PegInsertionEventsCfgPpoStage1:
+    """Stage1: keep peg on table near nominal, randomize arm joints."""
+
+    bind_prop_shared_physics_materials = EventTerm(
+        func=bind_sg2rl_prop_shared_physics_materials,
+        mode="startup",
+        params={},
+    )
+    reset_arm_joints = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=["arm_l_joint.*", "arm_r_joint.*"]),
+            "position_range": (-0.20, 0.20),
+            "velocity_range": (-0.10, 0.10),
+        },
+    )
+    reset_lift_joint = EventTerm(
+        func=mdp.reset_joints_by_offset,
+        mode="reset",
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=["lift_joint"]), "position_range": (0.08, 0.26), "velocity_range": (0.0, 0.0)},
+    )
+    reset_peg_xyyaw = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": (-0.05, 0.05), "y": (-0.05, 0.05), "z": (-0.004, 0.004), "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (-0.55, 0.55)},
+            "velocity_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0), "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (0.0, 0.0)},
+            "asset_cfg": SceneEntityCfg("insertive_object"),
+        },
+    )
+
+
+@configclass
+class FfwSg2PegInsertionEventsCfgPpoStage2(FfwSg2PegInsertionEventsCfgPpoStage1):
+    """Stage2: slightly tighter peg reset for insertion curriculum."""
+
+    reset_peg_xyyaw = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": (-0.03, 0.03), "y": (-0.03, 0.03), "z": (-0.003, 0.003), "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (-0.35, 0.35)},
+            "velocity_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0), "roll": (0.0, 0.0), "pitch": (0.0, 0.0), "yaw": (0.0, 0.0)},
+            "asset_cfg": SceneEntityCfg("insertive_object"),
+        },
+    )
+
+
 # ===================================================================
 # Top-level env configs
 # ===================================================================
@@ -342,13 +439,20 @@ class FfwSg2PegPartialAssemblySmokeEnvCfg(ManagerBasedRLEnvCfg):
         self.decimation = 1
         self.episode_length_s = 10.0
         self.sim.dt = 1 / 120.0
+        # PhysX: match Isaac Lab Factory peg-insert-style settings (contact-rich GPU sim).
+        # GPU PhysX does not grow all buffers dynamically — undersized gpu_* limits at ~16k envs
+        # can manifest as malloc/abort during "Starting the simulation…", not only OOM.
+        # See: isaaclab_tasks/direct/factory/factory_env_cfg.py (PhysxCfg block).
         self.sim.physx.solver_type = 1
         self.sim.physx.max_position_iteration_count = 192
         self.sim.physx.max_velocity_iteration_count = 1
-        self.sim.physx.bounce_threshold_velocity = 0.02
+        self.sim.physx.bounce_threshold_velocity = 0.2
         self.sim.physx.friction_offset_threshold = 0.01
-        self.sim.physx.friction_correlation_distance = 0.0005
-        self.sim.physx.gpu_max_rigid_patch_count = 16 * 1024 * 1024
+        self.sim.physx.friction_correlation_distance = 0.00625
+        self.sim.physx.gpu_max_rigid_contact_count = 2**23
+        self.sim.physx.gpu_max_rigid_patch_count = 2**23
+        self.sim.physx.gpu_collision_stack_size = 2**28
+        self.sim.physx.gpu_max_num_partitions = 1
         self.sim.render_interval = self.decimation
 
 
@@ -359,12 +463,26 @@ class FfwSg2PegPartialAssemblySmokeApproachLiftEnvCfg(FfwSg2PegPartialAssemblySm
 
 
 @configclass
-class FfwSg2PegPartialAssemblyApproachOnlyAEnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
-    rewards: FfwSg2PegInsertionRewardsApproachOnlyCfgA = FfwSg2PegInsertionRewardsApproachOnlyCfgA()
-    events: FfwSg2PegInsertionEventsCfgApproachOnlyShared = FfwSg2PegInsertionEventsCfgApproachOnlyShared()
+class FfwSg2PegPartialAssemblyPpoCurriculumEnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
+    """Stage2 PPO env: full shaped reward (grasp/lift + insertion)."""
+
+    rewards: FfwSg2PegInsertionRewardsCurriculumFullCfg = FfwSg2PegInsertionRewardsCurriculumFullCfg()
 
 
 @configclass
-class FfwSg2PegPartialAssemblyApproachOnlyBEnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
-    rewards: FfwSg2PegInsertionRewardsApproachOnlyCfgB = FfwSg2PegInsertionRewardsApproachOnlyCfgB()
-    events: FfwSg2PegInsertionEventsCfgApproachOnlyShared = FfwSg2PegInsertionEventsCfgApproachOnlyShared()
+class FfwSg2PegPpoStage1EnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
+    """Stage1 PPO env."""
+
+    rewards: FfwSg2PegInsertionRewardsApproachLiftCfg = FfwSg2PegInsertionRewardsApproachLiftCfg()
+    events: FfwSg2PegInsertionEventsCfgPpoStage1 = FfwSg2PegInsertionEventsCfgPpoStage1()
+
+
+@configclass
+class FfwSg2PegPpoStage2EnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
+    """Stage2 PPO env."""
+
+    rewards: FfwSg2PegInsertionRewardsCurriculumFullCfg = FfwSg2PegInsertionRewardsCurriculumFullCfg()
+    events: FfwSg2PegInsertionEventsCfgPpoStage2 = FfwSg2PegInsertionEventsCfgPpoStage2()
+
+
+# Note: Approach-only env configs removed (deprecated).

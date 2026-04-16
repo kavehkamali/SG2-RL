@@ -18,7 +18,7 @@ from isaaclab.app import AppLauncher
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 parser = argparse.ArgumentParser(description="APF path + right gripper tracks path (video B).")
-parser.add_argument("--task", type=str, default="OmniReset-FFWSG2-PegPartialAssemblySmoke-v0")
+parser.add_argument("--task", type=str, default="FFWSG2-PegSmoke-v0")
 parser.add_argument("--num_envs", type=int, default=1)
 parser.add_argument(
     "--video_length",
@@ -55,9 +55,9 @@ parser.add_argument("--scene_shift_z", type=float, default=0.0)
 parser.add_argument(
     "--peg_offset_x_from_hole",
     type=float,
-    default=-0.10,
+    default=-0.15,
     help="After cluster shift, peg world X = hole X + this (m). Stock layout uses +0.10 (pin away from robot); "
-    "-0.10 keeps the same spacing with the pin toward the robot.",
+    "-0.15 matches the training layout with the pin toward the robot.",
 )
 parser.add_argument(
     "--peg_offset_y_from_hole",

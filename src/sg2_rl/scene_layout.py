@@ -49,7 +49,7 @@ def apply_peg_hole_workspace_shift(
     cluster_dy: float,
     cluster_dz: float,
     *,
-    peg_offset_x_from_hole: float = -0.10,
+    peg_offset_x_from_hole: float = -0.15,
     peg_offset_y_from_hole: float = 0.0,
     shift_viewer: bool = True,
 ) -> None:
@@ -61,9 +61,8 @@ def apply_peg_hole_workspace_shift(
       insertive root XY is set from the receptive root XY plus these offsets. Peg **Z** is
       kept from the post-cluster insertive pose (table height).
 
-    Stock defaults put the pin at ``+0.10`` m in world **X** from the hole (pin away from the
-    robot). Use ``peg_offset_x_from_hole=-0.10`` for the same spacing with the pin **toward**
-    the robot (−X in that layout). Magnitude ``0.10`` matches the stock lateral offset.
+    Defaults match SG2-RL training layout: pin at ``-0.15`` m in world **X** from the hole
+    (pin toward the robot in this layout).
     """
     scene = env_cfg.scene
     for name in _CLUSTER_ASSET_NAMES:

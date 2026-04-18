@@ -518,7 +518,7 @@ class FfwSg2PegPartialAssemblySmokeEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         self.decimation = 1
-        self.episode_length_s = 5.0
+        self.episode_length_s = 6.667
         self.sim.dt = 1 / 120.0
         # PhysX: match Isaac Lab Factory peg-insert-style settings (contact-rich GPU sim).
         # GPU PhysX does not grow all buffers dynamically — undersized gpu_* limits at ~16k envs

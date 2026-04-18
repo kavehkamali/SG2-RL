@@ -168,6 +168,36 @@ class FfwSg2PegPartialAssemblyActionsCfg:
     )
 
 
+@configclass
+class FfwSg2PegStage1ActionsCfg:
+    """Stage1: same action vector layout as :class:`FfwSg2PegPartialAssemblyActionsCfg`, but **right arm + right
+    gripper commands are multiplied by zero** (network can still output those dimensions; they have no effect).
+
+    Uses per-regex ``scale`` on :class:`~isaaclab.envs.mdp.actions.JointPositionActionCfg` (see Isaac Lab docs).
+    """
+
+    torso_lift = mdp.JointPositionActionCfg(
+        asset_name="robot", joint_names=["lift_joint"], scale=0.22, use_default_offset=True,
+    )
+    arms_grippers = mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["arm_l_joint.*", "arm_r_joint.*", "gripper_l_joint.*", "gripper_r_joint.*"],
+        scale={
+            "arm_l_joint.*": 0.08,
+            "arm_r_joint.*": 0.0,
+            "gripper_l_joint.*": 0.08,
+            "gripper_r_joint.*": 0.0,
+        },
+        use_default_offset=True,
+    )
+    wheels_head_misc = mdp.JointPositionActionCfg(
+        asset_name="robot",
+        joint_names=["^(?!lift_joint$)(?!arm_[lr]_joint)(?!gripper_[lr]_joint).+$"],
+        scale=0.14,
+        use_default_offset=True,
+    )
+
+
 # ===================================================================
 # Observations
 # ===================================================================
@@ -228,27 +258,65 @@ class FfwSg2PegInsertionRewardsApproachLiftCfg:
     progress_context = RewTerm(func=task_mdp.ProgressContext, weight=0.0,
         params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"),
                 "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
-    wrist_to_peg = RewTerm(func=task_mdp.wrist_min_distance_to_asset_exp, weight=0.45,
-        params={"robot_cfg": SceneEntityCfg("robot"), "target_asset_cfg": SceneEntityCfg("insertive_object"), "sigma": 0.32})
-    wrist_approach_progress = RewTerm(func=task_mdp.WristToInsertiveApproachProgress, weight=0.55,
-        params={"robot_cfg": SceneEntityCfg("robot"), "target_asset_cfg": SceneEntityCfg("insertive_object"), "clip_m": 0.012})
+    # Use left wrist only — ``min(left,right)`` lets the policy score approach by moving the right arm.
+    wrist_to_peg = RewTerm(
+        func=task_mdp.wrist_min_distance_to_asset_exp,
+        weight=0.45,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "target_asset_cfg": SceneEntityCfg("insertive_object"),
+            "sigma": 0.32,
+            "wrist": "left",
+        },
+    )
+    wrist_approach_progress = RewTerm(
+        func=task_mdp.WristToInsertiveApproachProgress,
+        weight=0.55,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "target_asset_cfg": SceneEntityCfg("insertive_object"),
+            "clip_m": 0.012,
+            "wrist": "left",
+        },
+    )
     peg_xy_to_hole = RewTerm(func=task_mdp.insertive_xy_near_receptor_tanh, weight=0.14,
         params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object"), "std": 0.16})
     peg_lift = RewTerm(func=task_mdp.insertive_height_above_surface, weight=0.20,
         params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "surface_z": _TABLE_SURFACE_Z, "scale": 0.07})
-    gripper_near_peg = RewTerm(func=task_mdp.gripper_excitation_near_insertive, weight=0.18,
-        params={"robot_cfg": SceneEntityCfg("robot"), "insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "gripper_joint_cfg": SceneEntityCfg("robot", joint_names=["gripper_l_joint1", "gripper_r_joint1"]),
-                "proximity_std": 0.30, "joint_scale": 0.35})
-    dense_success_reward = RewTerm(func=task_mdp.dense_success_reward, weight=0.08,
-        params={"std": 2.0, "insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
-    success_reward = RewTerm(func=task_mdp.success_reward, weight=1.0,
-        params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"),
-                "receptive_asset_cfg": SceneEntityCfg("receptive_object")})
+    left_wrist_table_clearance = RewTerm(
+        func=task_mdp.left_wrist_clearance_above_surface_exp,
+        weight=0.12,
+        params={"robot_cfg": SceneEntityCfg("robot"), "surface_z": _TABLE_SURFACE_Z, "min_clearance_m": 0.10, "sigma_m": 0.055},
+    )
+    gripper_near_peg = RewTerm(
+        func=task_mdp.gripper_excitation_near_insertive,
+        weight=0.18,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "insertive_asset_cfg": SceneEntityCfg("insertive_object"),
+            "gripper_joint_cfg": SceneEntityCfg("robot", joint_names=["gripper_l_joint1"]),
+            "proximity_std": 0.30,
+            "joint_scale": 0.35,
+            "proximity_wrist": "left",
+        },
+    )
+    # Stage1 objective: lift and hold the peg until the end of the episode (no insertion success).
+    hold_reward = RewTerm(
+        func=task_mdp.left_hold_reward,
+        weight=0.45,
+        params={"robot_cfg": SceneEntityCfg("robot"), "insertive_asset_cfg": SceneEntityCfg("insertive_object"), "surface_z": _TABLE_SURFACE_Z, "lift_dz_m": 0.03},
+    )
+    hold_success_terminal = RewTerm(
+        func=task_mdp.left_hold_terminal_reward,
+        weight=3.0,
+        params={"robot_cfg": SceneEntityCfg("robot"), "insertive_asset_cfg": SceneEntityCfg("insertive_object"), "surface_z": _TABLE_SURFACE_Z, "lift_dz_m": 0.03},
+    )
     collision_free = RewTerm(func=task_mdp.collision_free, weight=0.14, params={})
     action_magnitude = RewTerm(func=task_mdp.action_l2_clamped, weight=-1e-4)
     action_smoothness = RewTerm(func=task_mdp.action_delta_l2_clamped, weight=-3e-4)
+    # Right arm is not actuated in Stage1; keep a small residual penalty for simulator coupling / drift.
+    right_hand_steady = RewTerm(func=task_mdp.right_hand_steady_penalty, weight=-4e-4, params={"robot_cfg": SceneEntityCfg("robot")})
+    left_hand_smooth = RewTerm(func=task_mdp.LeftHandSmoothnessPenalty, weight=-1.2e-3, params={"robot_cfg": SceneEntityCfg("robot")})
     time_penalty = RewTerm(func=task_mdp.time_penalty, weight=-2e-3)
 
 
@@ -310,6 +378,8 @@ class FfwSg2PegInsertionRewardsCurriculumFullCfg:
     collision_free = RewTerm(func=task_mdp.collision_free, weight=0.10, params={})
     action_magnitude = RewTerm(func=task_mdp.action_l2_clamped, weight=-1e-4)
     action_smoothness = RewTerm(func=task_mdp.action_delta_l2_clamped, weight=-3e-4)
+    right_hand_steady = RewTerm(func=task_mdp.right_hand_steady_penalty, weight=-8e-4, params={"robot_cfg": SceneEntityCfg("robot")})
+    left_hand_smooth = RewTerm(func=task_mdp.LeftHandSmoothnessPenalty, weight=-6e-4, params={"robot_cfg": SceneEntityCfg("robot")})
     time_penalty = RewTerm(func=task_mdp.time_penalty, weight=-3e-3)
 
 
@@ -322,6 +392,17 @@ class FfwSg2PegInsertionTerminationsCfg:
     success = DoneTerm(
         func=task_mdp.insertion_success_done,
         params={"insertive_asset_cfg": SceneEntityCfg("insertive_object"), "receptive_asset_cfg": SceneEntityCfg("receptive_object")},
+    )
+
+
+@configclass
+class FfwSg2PegStage1HoldTerminationsCfg:
+    """Stage1 success: lift + hold peg until the end of the episode."""
+
+    time_out = DoneTerm(func=task_mdp.time_out, time_out=True)
+    success = DoneTerm(
+        func=task_mdp.left_hold_success_at_timeout,
+        params={"robot_cfg": SceneEntityCfg("robot"), "insertive_asset_cfg": SceneEntityCfg("insertive_object"), "surface_z": _TABLE_SURFACE_Z, "lift_dz_m": 0.03},
     )
 
 @configclass
@@ -437,7 +518,7 @@ class FfwSg2PegPartialAssemblySmokeEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         self.decimation = 1
-        self.episode_length_s = 10.0
+        self.episode_length_s = 5.0
         self.sim.dt = 1 / 120.0
         # PhysX: match Isaac Lab Factory peg-insert-style settings (contact-rich GPU sim).
         # GPU PhysX does not grow all buffers dynamically — undersized gpu_* limits at ~16k envs
@@ -458,6 +539,7 @@ class FfwSg2PegPartialAssemblySmokeEnvCfg(ManagerBasedRLEnvCfg):
 
 @configclass
 class FfwSg2PegPartialAssemblySmokeApproachLiftEnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
+    actions: FfwSg2PegStage1ActionsCfg = FfwSg2PegStage1ActionsCfg()
     rewards: FfwSg2PegInsertionRewardsApproachLiftCfg = FfwSg2PegInsertionRewardsApproachLiftCfg()
     events: FfwSg2PegInsertionEventsCfgHighArmNoise = FfwSg2PegInsertionEventsCfgHighArmNoise()
 
@@ -473,6 +555,8 @@ class FfwSg2PegPartialAssemblyPpoCurriculumEnvCfg(FfwSg2PegPartialAssemblySmokeE
 class FfwSg2PegPpoStage1EnvCfg(FfwSg2PegPartialAssemblySmokeEnvCfg):
     """Stage1 PPO env."""
 
+    actions: FfwSg2PegStage1ActionsCfg = FfwSg2PegStage1ActionsCfg()
+    terminations: FfwSg2PegStage1HoldTerminationsCfg = FfwSg2PegStage1HoldTerminationsCfg()
     rewards: FfwSg2PegInsertionRewardsApproachLiftCfg = FfwSg2PegInsertionRewardsApproachLiftCfg()
     events: FfwSg2PegInsertionEventsCfgPpoStage1 = FfwSg2PegInsertionEventsCfgPpoStage1()
 

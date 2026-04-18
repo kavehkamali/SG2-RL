@@ -39,6 +39,40 @@ parser.add_argument("--task", type=str, required=True)
 parser.add_argument("--num_envs", type=int, required=True, help="Num envs per process (torchrun rank).")
 parser.add_argument("--seed", type=int, default=42)
 parser.add_argument("--skrl_cfg", type=str, required=True, help="Path to SKRL YAML config.")
+parser.add_argument("--wandb", action="store_true", help="Log training scalars to Weights & Biases (rank 0 only).")
+parser.add_argument(
+    "--wandb_project",
+    type=str,
+    default=os.environ.get("WANDB_PROJECT", "sg2-rl"),
+    help="wandb project (default: WANDB_PROJECT or sg2-rl).",
+)
+parser.add_argument("--wandb_entity", type=str, default=os.environ.get("WANDB_ENTITY", ""), help="wandb entity/team.")
+parser.add_argument("--wandb_group", type=str, default=os.environ.get("WANDB_GROUP", ""), help="wandb run group (e.g. experiment family).")
+parser.add_argument("--wandb_name", type=str, default="", help="wandb run name (default: auto).")
+parser.add_argument(
+    "--wandb_eval_interval",
+    type=int,
+    default=1000,
+    help="Trainer steps between periodic GIF eval subprocess runs (0 disables). Uses scripts/wandb_gif_eval.py.",
+)
+parser.add_argument("--wandb_eval_episodes", type=int, default=4, help="Rollouts per GIF eval (one GIF per episode).")
+parser.add_argument(
+    "--wandb_eval_steps",
+    type=int,
+    default=2000,
+    help="Max policy steps per GIF rollout episode (NOT wandb scalar log spacing — that is SKRL agent.experiment.write_interval in the yaml).",
+)
+parser.add_argument(
+    "--wandb_gif",
+    action="store_true",
+    help="If set with --wandb, run GIF eval on --wandb_eval_interval (set SG2RL_WANDB_EVAL_CUDA to a free GPU).",
+)
+parser.add_argument(
+    "--resume",
+    type=str,
+    default="",
+    help="Path to a checkpoint .pt (e.g. artifacts/wandb_eval_ckpt/milestone_XXX_trainer_YYY.pt) to resume from. Loads networks + optimizer state into the agent before training begins. Trainer step counter still starts at 0.",
+)
 AppLauncher.add_app_launcher_args(parser)
 args_cli, _unknown = parser.parse_known_args()
 
@@ -61,6 +95,7 @@ import numpy as np  # noqa: E402
 
 from sg2_rl.config_loader import load_task_cfg  # noqa: E402
 from sg2_rl.gym_register import ensure_task_registered  # noqa: E402
+from sg2_rl import wandb_utils  # noqa: E402
 
 
 _ANSI = {
@@ -172,7 +207,167 @@ def _step_reward_terms(env: Any) -> list[tuple[str, float]]:
     return [(str(name), float(value)) for name, value in zip(names, means)]
 
 
-def _install_console_reporter(*, runner: Any, env: Any) -> None:
+def _get_optimizer_lr(agent: Any) -> float | None:
+    optimizer = getattr(agent, "optimizer", None)
+    if optimizer is None or not getattr(optimizer, "param_groups", None):
+        return None
+    return float(optimizer.param_groups[0]["lr"])
+
+
+def _set_optimizer_lr(agent: Any, lr: float) -> None:
+    optimizer = getattr(agent, "optimizer", None)
+    if optimizer is None:
+        return
+    for group in optimizer.param_groups:
+        group["lr"] = float(lr)
+
+
+def _resolve_lr_schedule(cfg: dict[str, Any], *, total_timesteps: int) -> dict[str, float] | None:
+    sg2rl_cfg = cfg.get("sg2rl", {}) if isinstance(cfg, dict) else {}
+    lr_cfg = sg2rl_cfg.get("lr_schedule", {}) if isinstance(sg2rl_cfg, dict) else {}
+    if not isinstance(lr_cfg, dict) or not lr_cfg.get("enabled", False):
+        return None
+    base_lr = float(lr_cfg.get("base_lr", 0.0) or 0.0)
+    decay_start = int(lr_cfg.get("decay_start", 0) or 0)
+    slowdown_factor = float(lr_cfg.get("slowdown_factor", 1.0) or 1.0)
+    min_scale = float(lr_cfg.get("min_scale", 0.0) or 0.0)
+    if base_lr <= 0.0 or total_timesteps <= 0:
+        return None
+    return {
+        "base_lr": base_lr,
+        "decay_start": max(0, decay_start),
+        "slowdown_factor": max(1.0, slowdown_factor),
+        "min_scale": min(max(min_scale, 0.0), 1.0),
+        "total_timesteps": int(total_timesteps),
+    }
+
+
+def _scheduled_lr(*, absolute_step: int, schedule_cfg: dict[str, float]) -> float:
+    base_lr = float(schedule_cfg["base_lr"])
+    decay_start = int(schedule_cfg["decay_start"])
+    total_timesteps = max(int(schedule_cfg["total_timesteps"]), 1)
+    slowdown_factor = float(schedule_cfg["slowdown_factor"])
+    min_scale = float(schedule_cfg["min_scale"])
+    if absolute_step <= decay_start or decay_start >= total_timesteps:
+        return base_lr
+    decay_window = max(total_timesteps - decay_start, 1)
+    progress = max(0.0, float(absolute_step - decay_start) / float(decay_window))
+    scaled_progress = min(progress / slowdown_factor, 1.0)
+    scale = max(min_scale, 1.0 - scaled_progress)
+    return base_lr * scale
+
+
+def _install_lr_controller(*, agent: Any, schedule_cfg: dict[str, float] | None, wandb_ctx: dict[str, Any] | None) -> None:
+    if schedule_cfg is None:
+        return
+    if hasattr(agent, "scheduler"):
+        agent.scheduler = None
+
+    base_lr = float(schedule_cfg["base_lr"])
+    _set_optimizer_lr(agent, base_lr)
+    original_post = agent.post_interaction
+
+    def _post(self, *, timestep: int, timesteps: int) -> None:
+        step_offset = int((wandb_ctx or {}).get("_wandb_step_offset", 0) or 0)
+        absolute_step = step_offset + int(timestep) + 1
+        lr = _scheduled_lr(absolute_step=absolute_step, schedule_cfg=schedule_cfg)
+        _set_optimizer_lr(self, lr)
+        self.track_data("Learning / Learning rate", lr)
+        original_post(timestep=timestep, timesteps=timesteps)
+
+    agent.post_interaction = MethodType(_post, agent)
+
+
+def _maybe_run_wandb_gif_eval(*, agent: Any, wandb_ctx: dict[str, Any], ts1: int) -> None:
+    """Run GIF subprocess when trainer step ``ts1`` crosses a ``wandb_eval_interval`` band (every step, rank 0)."""
+    if int(os.environ.get("RANK", "0")) != 0:
+        return
+    if not wandb_ctx or not wandb_ctx.get("wandb_gif"):
+        return
+    interval = int(wandb_ctx.get("wandb_eval_interval", 0) or 0)
+    if interval <= 0:
+        return
+    wandb_run = wandb_ctx.get("run")
+    if wandb_run is None:
+        return
+    step_offset = int(wandb_ctx.get("_wandb_step_offset", 0) or 0)
+    absolute_step = step_offset + int(ts1)
+    milestone = absolute_step // interval
+    last_m = int(wandb_ctx.get("_wandb_gif_milestone", 0))
+    if ts1 <= 0 or absolute_step <= 0 or milestone <= last_m:
+        return
+    wandb_ctx["_wandb_gif_milestone"] = milestone
+    label_step = milestone * interval
+    eval_cuda = os.environ.get("SG2RL_WANDB_EVAL_CUDA", "").strip()
+    if not eval_cuda:
+        if not wandb_ctx.get("_wandb_gif_cuda_warned"):
+            print(
+                "[sg2_rl] wandb GIF eval skipped: set SG2RL_WANDB_EVAL_CUDA to a free GPU id "
+                "(Isaac eval runs in a separate process and needs its own GPU memory).",
+                flush=True,
+            )
+            wandb_ctx["_wandb_gif_cuda_warned"] = True
+        return
+    ckpt = (
+        Path(wandb_ctx["repo_root"])
+        / "artifacts"
+        / "wandb_eval_ckpt"
+        / f"milestone_{label_step}_trainer_{absolute_step}.pt"
+    )
+    print(
+        f"[sg2_rl] wandb: starting GIF eval (milestone={milestone}, trainer_step={absolute_step}, local_step={ts1}, label_step={label_step})",
+        flush=True,
+    )
+    if not wandb_utils.save_agent_checkpoint(agent, ckpt):
+        return
+    output_dir = wandb_utils.gif_eval_output_dir(
+        repo_root=Path(wandb_ctx["repo_root"]),
+        global_step=int(label_step),
+        trainer_step=int(absolute_step),
+    )
+    rc, output_dir, log_path = wandb_utils.launch_gif_eval_subprocess(
+        repo_root=Path(wandb_ctx["repo_root"]),
+        python=sys.executable,
+        task=str(wandb_ctx["task"]),
+        skrl_cfg=str(wandb_ctx["skrl_cfg"]),
+        checkpoint=ckpt,
+        episodes=int(wandb_ctx["wandb_eval_episodes"]),
+        steps=int(wandb_ctx["wandb_eval_steps"]),
+        wandb_project=str(wandb_ctx["wandb_project"]),
+        wandb_entity=(str(wandb_ctx["wandb_entity"]).strip() or None),
+        eval_cuda=eval_cuda,
+        seed_base=int(wandb_ctx.get("seed", 0)),
+        global_step=int(label_step),
+        trainer_step=int(absolute_step),
+        output_dir=output_dir,
+    )
+    if rc != 0:
+        print(f"[sg2_rl] wandb GIF eval subprocess exited with code {rc} (check /tmp/sg2rl_wandb_gif_eval_step*.log)", flush=True)
+        return
+    uploaded = wandb_utils.log_gif_directory(wandb_run, output_dir=output_dir, step=int(label_step))
+    if uploaded <= 0:
+        print(f"[sg2_rl] wandb: no GIFs found in {output_dir} after eval (check {log_path})", flush=True)
+        return
+    print(f"[sg2_rl] wandb: uploaded {uploaded} GIF(s) from {output_dir}", flush=True)
+
+
+def _install_wandb_gif_post_hook(*, agent: Any, wandb_ctx: dict[str, Any] | None) -> None:
+    """Fire GIF eval on schedule every env step, independent of SKRL write_interval / TensorBoard."""
+    if wandb_ctx is None or not wandb_ctx.get("wandb_gif"):
+        return
+    if int(os.environ.get("RANK", "0")) != 0:
+        return
+    _orig = agent.post_interaction
+
+    def _post(self, *, timestep: int, timesteps: int) -> None:
+        _orig(timestep=timestep, timesteps=timesteps)
+        ts1 = int(timestep) + 1
+        _maybe_run_wandb_gif_eval(agent=self, wandb_ctx=wandb_ctx, ts1=ts1)
+
+    agent.post_interaction = MethodType(_post, agent)
+
+
+def _install_console_reporter(*, runner: Any, env: Any, wandb_ctx: dict[str, Any] | None = None) -> None:
     trainer = runner.trainer
     agent = runner.agent
 
@@ -207,6 +402,8 @@ def _install_console_reporter(*, runner: Any, env: Any) -> None:
         reward_instant_max = _mean_metric(metrics, "Reward / Instantaneous reward (max)")
         value_loss = _mean_metric(metrics, "Loss / Value loss")
         learning_rate = _mean_metric(metrics, "Learning / Learning rate")
+        if learning_rate is None:
+            learning_rate = _get_optimizer_lr(self)
         stddev = _mean_metric(metrics, "Policy / Standard deviation")
         env_step_ms = _mean_metric(metrics, "Stats / Env stepping time (ms)")
         algo_ms = _mean_metric(metrics, "Stats / Algorithm update time (ms)")
@@ -267,6 +464,11 @@ def _install_console_reporter(*, runner: Any, env: Any) -> None:
                 label = "  episode    " if index == 0 else "              "
                 print(f"{label}  " + " | ".join(chunk), flush=True)
 
+        wandb_run = wandb_ctx.get("run") if wandb_ctx else None
+        if wandb_run is not None:
+            step_offset = int((wandb_ctx or {}).get("_wandb_step_offset", 0) or 0)
+            wandb_utils.log_metrics(wandb_run, dict(self.tracking_data), step=step_offset + int(timestep))
+
         original_write_tracking_data(timestep=timestep, timesteps=timesteps)
 
     agent.write_tracking_data = MethodType(_console_write_tracking_data, agent)
@@ -290,9 +492,79 @@ def main() -> None:
 
     cfg = Runner.load_cfg_from_yaml(str(args_cli.skrl_cfg))
     runner = Runner(env, cfg, verbose=False)
-    _install_console_reporter(runner=runner, env=env)
+
+    _ag = runner.agent
+    print(
+        f"[sg2_rl] diag: write_interval={getattr(_ag, 'write_interval', 'n/a')} "
+        f"checkpoint_interval={getattr(_ag, 'checkpoint_interval', 'n/a')} "
+        f"RANK={os.environ.get('RANK', '')} LOCAL_RANK={os.environ.get('LOCAL_RANK', '')} "
+        f"WORLD_SIZE={os.environ.get('WORLD_SIZE', '')} "
+        f"SG2RL_WANDB_EVAL_CUDA={os.environ.get('SG2RL_WANDB_EVAL_CUDA', '')}",
+        flush=True,
+    )
+
+    wandb_run = wandb_utils.init_wandb(
+        enabled=bool(args_cli.wandb),
+        project=str(args_cli.wandb_project),
+        entity=(str(args_cli.wandb_entity).strip() or None),
+        group=(str(args_cli.wandb_group).strip() or None),
+        name=(str(args_cli.wandb_name).strip() or None),
+        config={
+            "task": args_cli.task,
+            "num_envs": int(args_cli.num_envs),
+            "seed": int(args_cli.seed),
+            "skrl_cfg": str(args_cli.skrl_cfg),
+            "world_size": int(os.environ.get("WORLD_SIZE", "1")),
+        },
+    )
+    wandb_ctx: dict[str, Any] | None = None
+    if wandb_run is not None:
+        wandb_ctx = {
+            "run": wandb_run,
+            "wandb_gif": bool(args_cli.wandb_gif),
+            "wandb_eval_interval": int(args_cli.wandb_eval_interval),
+            "wandb_eval_episodes": int(args_cli.wandb_eval_episodes),
+            "wandb_eval_steps": int(args_cli.wandb_eval_steps),
+            "repo_root": str(_REPO_ROOT),
+            "task": str(args_cli.task),
+            "skrl_cfg": str(Path(args_cli.skrl_cfg).resolve()),
+            "wandb_project": str(args_cli.wandb_project),
+            "wandb_entity": str(args_cli.wandb_entity),
+            "seed": int(args_cli.seed),
+            "_wandb_gif_milestone": 0,
+            "_wandb_step_offset": 0,
+            "_wandb_run_step": int(getattr(wandb_run, "step", 0) or 0),
+        }
+
+    total_timesteps = int(
+        (cfg.get("trainer", {}) or {}).get("timesteps", 0)
+        or getattr(runner.trainer, "timesteps", 0)
+        or 0
+    )
+    lr_schedule_cfg = _resolve_lr_schedule(cfg, total_timesteps=total_timesteps)
+    _install_lr_controller(agent=runner.agent, schedule_cfg=lr_schedule_cfg, wandb_ctx=wandb_ctx)
+    _install_console_reporter(runner=runner, env=env, wandb_ctx=wandb_ctx)
+    _install_wandb_gif_post_hook(agent=runner.agent, wandb_ctx=wandb_ctx)
+
+    resume_ckpt = str(args_cli.resume).strip()
+    if resume_ckpt:
+        ckpt_path = Path(resume_ckpt).expanduser().resolve()
+        if not ckpt_path.is_file():
+            raise FileNotFoundError(f"--resume checkpoint not found: {ckpt_path}")
+        print(f"[sg2_rl] Resuming (weights-only) from checkpoint: {ckpt_path}", flush=True)
+        runner.agent.load(str(ckpt_path))
+        # Weights-only resume: the new run starts the trainer at step 0 of a fresh
+        # budget. Do NOT touch ``_wandb_step_offset`` or ``trainer.initial_timestep``
+        # so the LR schedule (and wandb plots) are indexed on this new run's local
+        # trainer step -- matching the YAML ``sg2rl.lr_schedule`` boundaries.
+
     runner.trainer.train()
 
+    if wandb_run is not None:
+        try:
+            wandb_run.finish()
+        except Exception:
+            pass
     env.close()
 
 

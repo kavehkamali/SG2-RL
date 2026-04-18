@@ -63,13 +63,22 @@ agent:
     directory: "sg2_rl_stage1_grasp_lift_mlp_ppo"
     experiment_name: ""
     # SKRL SequentialTrainer: one trainer timestep = one env.step() across all parallel envs.
-    # Metrics often; checkpoint every 3,000 trainer steps (see trainer.timesteps).
+    # TensorBoard + our wandb.log only run when (trainer_step+1) is a multiple of write_interval.
+    # Keep 32 for dense curves; very large values (e.g. 1000) => only ~1 wandb point per 1000 steps.
+    # Checkpoint every 5,000 trainer steps (see trainer.timesteps).
     write_interval: 32
-    checkpoint_interval: 3000
+    checkpoint_interval: 5000
 
 trainer:
   class: SequentialTrainer
-  # Total trainer steps (outer loop). With torchrun --nproc_per_node=2 and 16,384 envs/GPU → 32,768 envs total.
-  timesteps: 96000
+  # Total trainer steps (outer loop). With e.g. torchrun --nproc_per_node=3 and 10,922 envs/GPU → 32,766 envs total.
+  timesteps: 500000
   environment_info: log
 
+sg2rl:
+  lr_schedule:
+    enabled: true
+    base_lr: 3.0e-04
+    decay_start: 200000
+    slowdown_factor: 4.0
+    min_scale: 0.75

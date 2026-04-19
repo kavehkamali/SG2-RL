@@ -1,0 +1,83 @@
+# Copyright (c) 2024-2026, SG2-RL contributors.
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# PPO for FFW-SG2 OmniReset-style bimanual peg handover+insertion.
+# Hyperparameters mirror UWLab's omnireset PPO defaults.
+
+seed: 42
+
+models:
+  separate: true
+  policy:
+    class: GaussianMixin
+    clip_actions: false
+    clip_log_std: true
+    min_log_std: -5.0
+    max_log_std: 1.0
+    initial_log_std: -1.0
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [512, 256, 128]
+        activations: elu
+    output: ACTIONS
+  value:
+    class: DeterministicMixin
+    clip_actions: false
+    network:
+      - name: net
+        input: STATES
+        layers: [512, 256, 128]
+        activations: elu
+    output: ONE
+
+memory:
+  class: RandomMemory
+  memory_size: -1
+
+agent:
+  class: PPO
+  rollouts: 32
+  learning_epochs: 5
+  mini_batches: 4
+  discount_factor: 0.99
+  gae_lambda: 0.95
+  learning_rate: 3.0e-04
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.01
+  state_preprocessor: RunningStandardScaler
+  state_preprocessor_kwargs: null
+  observation_preprocessor: RunningStandardScaler
+  observation_preprocessor_kwargs: null
+  value_preprocessor: RunningStandardScaler
+  value_preprocessor_kwargs: null
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 1.0
+  ratio_clip: 0.2
+  value_clip: 0.2
+  entropy_loss_scale: 0.005
+  value_loss_scale: 1.0
+  kl_threshold: 0.0
+  rewards_shaper_scale: 1.0
+  time_limit_bootstrap: false
+  experiment:
+    directory: "sg2_rl_omnireset_bimanual_peg"
+    experiment_name: ""
+    write_interval: 32
+    checkpoint_interval: 5000
+
+trainer:
+  class: SequentialTrainer
+  timesteps: 600000
+  environment_info: log
+
+# Optional SG2-RL learning-rate warm-decay schedule (read by train_skrl_ppo.py).
+sg2rl:
+  lr_schedule:
+    enabled: true
+    base_lr: 3.0e-04
+    decay_start: 250000
+    slowdown_factor: 3.0
+    min_scale: 0.5

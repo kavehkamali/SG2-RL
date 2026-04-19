@@ -14,6 +14,10 @@ REGISTERED_TASKS: dict[str, tuple[str, str]] = {
     "FFWSG2-PegSmoke-v0": (f"{_ENV_CFG_MOD}:FfwSg2PegPartialAssemblySmokeEnvCfg", "skrl_agent_placeholder.yaml"),
     "FFWSG2-PegGraspLift-v0": (f"{_ENV_CFG_MOD}:FfwSg2PegPpoStage1EnvCfg", "skrl_ppo_mlp_stage1_grasp_lift.yaml"),
     "FFWSG2-PegInsert-v0": (f"{_ENV_CFG_MOD}:FfwSg2PegPpoStage2EnvCfg", "skrl_ppo_mlp_stage2_insert.yaml"),
+    "FFWSG2-OmniReset-BimanualPegInsert-v0": (
+        "sg2_rl.omnireset_env_cfg:FfwSg2OmniResetBimanualPegInsertEnvCfg",
+        "skrl_ppo_omnireset_bimanual_peg.yaml",
+    ),
 }
 
 

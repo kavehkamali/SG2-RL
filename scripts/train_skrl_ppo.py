@@ -300,14 +300,18 @@ def _maybe_run_wandb_gif_eval(*, agent: Any, wandb_ctx: dict[str, Any], ts1: int
     label_step = milestone * interval
     eval_cuda = os.environ.get("SG2RL_WANDB_EVAL_CUDA", "").strip()
     if not eval_cuda:
+        # Training is paused here (subprocess.run below is synchronous/blocking).
+        # In DDP, rank-0 blocks → rank-1 stalls at next NCCL barrier → both GPUs
+        # have no active kernels.  Default to GPU 0 so eval always runs.
+        # Override with SG2RL_WANDB_EVAL_CUDA=<id> to use a specific GPU.
+        eval_cuda = "0"
         if not wandb_ctx.get("_wandb_gif_cuda_warned"):
             print(
-                "[sg2_rl] wandb GIF eval skipped: set SG2RL_WANDB_EVAL_CUDA to a free GPU id "
-                "(Isaac eval runs in a separate process and needs its own GPU memory).",
+                "[sg2_rl] wandb GIF eval: SG2RL_WANDB_EVAL_CUDA not set — defaulting to GPU 0 "
+                "(training is paused during eval so GPU kernels are idle; VRAM is shared).",
                 flush=True,
             )
             wandb_ctx["_wandb_gif_cuda_warned"] = True
-        return
     ckpt = (
         Path(wandb_ctx["repo_root"])
         / "artifacts"
